@@ -1,6 +1,7 @@
 import 'package:elderly_care_app/firebase_options.dart';
 import 'package:elderly_care_app/screens/auth/login_screen.dart';
 import 'package:elderly_care_app/services/auth_service.dart';
+import 'package:elderly_care_app/services/database_service.dart';
 import 'package:elderly_care_app/services/notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -38,6 +39,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
+        Provider<DatabaseService>(create: (_) => DatabaseService()),
       ],
       child: const MyApp(),
     ),

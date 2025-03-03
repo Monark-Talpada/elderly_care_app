@@ -35,7 +35,34 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
       _isLoading = true;
     });
     
-    _availability = widget.volunteer.availability;
+    try {
+      // Fetch the latest availability data from Firestore
+      final volunteerDoc = await FirebaseFirestore.instance
+          .collection('volunteers')
+          .doc(widget.volunteer.id)
+          .get();
+      
+      if (volunteerDoc.exists && volunteerDoc.data()?['availability'] != null) {
+        // Convert Firestore data to Map<String, List<TimeSlot>>
+        final Map<String, dynamic> availabilityData = 
+            Map<String, dynamic>.from(volunteerDoc.data()?['availability'] ?? {});
+        
+        _availability = {};
+        
+        availabilityData.forEach((key, value) {
+          if (value is List) {
+            _availability[key] = (value as List)
+                .map((slot) => TimeSlot.fromJson(Map<String, dynamic>.from(slot)))
+                .toList();
+          }
+        });
+      } else {
+        _availability = widget.volunteer.availability;
+      }
+    } catch (e) {
+      print('Error loading availability: $e');
+      _availability = widget.volunteer.availability;
+    }
     
     setState(() {
       _isLoading = false;
@@ -85,6 +112,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     final TimeSlot newSlot = TimeSlot(
       startTime: startDateTime,
       endTime: endDateTime,
+      isBooked: false,
     );
 
     setState(() {
@@ -101,19 +129,26 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
 
   Future<void> _updateAvailability() async {
     try {
-      final Volunteer updatedVolunteer = widget.volunteer.copyWith(
-        availability: _availability,
-      );
+      // Convert TimeSlot objects to Firestore-friendly format
+      final Map<String, List<Map<String, dynamic>>> firebaseAvailability = {};
       
-      await _databaseService.updateVolunteerAvailability(
-        updatedVolunteer.id, 
-        updatedVolunteer.availability
-      );
+      _availability.forEach((day, slots) {
+        firebaseAvailability[day] = slots.map((slot) => slot.toJson()).toList();
+      });
+      
+      // Update directly in Firestore
+      await FirebaseFirestore.instance
+          .collection('volunteers')
+          .doc(widget.volunteer.id)
+          .update({
+            'availability': firebaseAvailability,
+          });
       
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Availability updated successfully')),
       );
     } catch (e) {
+      print('Error updating availability: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to update: $e')),
       );
@@ -233,3 +268,36 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     );
   }
 }
+
+// Make sure your TimeSlot class has proper toJson and fromJson methods:
+// Add these to your TimeSlot class in volunteer_model.dart if they don't exist
+
+/*
+class TimeSlot {
+  final DateTime startTime;
+  final DateTime endTime;
+  final bool isBooked;
+
+  TimeSlot({
+    required this.startTime,
+    required this.endTime,
+    this.isBooked = false,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'startTime': Timestamp.fromDate(startTime),
+      'endTime': Timestamp.fromDate(endTime),
+      'isBooked': isBooked,
+    };
+  }
+
+  factory TimeSlot.fromJson(Map<String, dynamic> json) {
+    return TimeSlot(
+      startTime: (json['startTime'] as Timestamp).toDate(),
+      endTime: (json['endTime'] as Timestamp).toDate(),
+      isBooked: json['isBooked'] ?? false,
+    );
+  }
+}
+*/

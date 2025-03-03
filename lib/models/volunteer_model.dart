@@ -66,7 +66,7 @@ class Volunteer extends User {
     
     Map<String, List<Map<String, dynamic>>> availabilityMap = {};
     availability.forEach((day, slots) {
-      availabilityMap[day] = slots.map((slot) => slot.toMap()).toList();
+      availabilityMap[day] = slots.map((slot) => slot.toJson()).toList();
     });
     
     data.addAll({
@@ -133,13 +133,20 @@ class TimeSlot {
     );
   }
 
-  Map<String, dynamic> toMap() {
+   Map<String, dynamic> toJson() {
     return {
       'startTime': Timestamp.fromDate(startTime),
       'endTime': Timestamp.fromDate(endTime),
       'isBooked': isBooked,
-      'bookedById': bookedById,
     };
+  }
+
+  factory TimeSlot.fromJson(Map<String, dynamic> json) {
+    return TimeSlot(
+      startTime: (json['startTime'] as Timestamp).toDate(),
+      endTime: (json['endTime'] as Timestamp).toDate(),
+      isBooked: json['isBooked'] ?? false,
+    );
   }
 
   TimeSlot copyWith({
