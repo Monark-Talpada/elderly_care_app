@@ -252,7 +252,7 @@ Future<bool> updateVolunteerTimeSlot(
     // Convert the updated availability to the format expected by Firestore
     Map<String, List<Map<String, dynamic>>> firestoreAvailability = {};
     updatedAvailability.forEach((day, slots) {
-      firestoreAvailability[day] = slots.map((slot) => slot.toMap()).toList();
+      firestoreAvailability[day] = slots.map((slot) => slot.toJson()).toList();
     });
     
     // Update only the availability field in Firestore
@@ -275,7 +275,7 @@ Future<void> updateVolunteerAvailability(String volunteerId, Map<String, List<Ti
     // Convert availability to the format Firestore can store
     Map<String, List<Map<String, dynamic>>> availabilityMap = {};
     availability.forEach((day, slots) {
-      availabilityMap[day] = slots.map((slot) => slot.toMap()).toList();
+      availabilityMap[day] = slots.map((slot) => slot.toJson()).toList();
     });
     
     await FirebaseFirestore.instance

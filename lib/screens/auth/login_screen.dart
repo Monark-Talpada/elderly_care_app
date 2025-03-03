@@ -1,10 +1,14 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
+import 'package:elderly_care_app/models/family_model.dart';
+import 'package:elderly_care_app/models/senior_model.dart';
+import 'package:elderly_care_app/models/user_model.dart';
+import 'package:elderly_care_app/models/volunteer_model.dart';
 import 'package:elderly_care_app/screens/auth/register_screen.dart';
 import 'package:elderly_care_app/screens/family/family_home.dart';
 import 'package:elderly_care_app/screens/senior/senior_home.dart';
 import 'package:elderly_care_app/screens/volunteer/volunteer_home.dart';
+import 'package:elderly_care_app/services/auth_service.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -28,8 +32,32 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  void _navigateToHomeScreen(User user) {
+    if (user.userType == UserType.senior) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => SeniorHomeScreen(),
+        ),
+      );
+    } else if (user.userType == UserType.family) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => FamilyHomeScreen(family: user as FamilyMember),
+        ),
+      );
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => VolunteerHomeScreen(volunteerId: (user as Volunteer).id),
+        ),
+      );
+    }
+  }
+
   Future<void> _signIn() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -37,67 +65,23 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final user = await authService.signIn(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
       );
 
-      User? user = userCredential.user;
       if (user != null) {
-        print("Login successful: ${user.email}");
-        await _navigateToHomeScreen(user.uid);
-      }
-    } on FirebaseAuthException catch (e) {
-      print("FirebaseAuthException: ${e.code} - ${e.message}");
-      setState(() {
-        _errorMessage = e.message ?? 'Invalid email or password.';
-        _isLoading = false;
-      });
-    } catch (e) {
-      print("Unexpected error: $e");
-      setState(() {
-        _errorMessage = 'An unexpected error occurred.';
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _navigateToHomeScreen(String userId) async {
-    try {
-      DocumentSnapshot userDoc =
-          await FirebaseFirestore.instance.collection('users').doc(userId).get();
-
-      if (!userDoc.exists || !userDoc.data().toString().contains('userType')) {
+        _navigateToHomeScreen(user);
+      } else {
         setState(() {
-          _errorMessage = 'User data not found or missing userType.';
+          _errorMessage = 'Invalid email or password';
           _isLoading = false;
         });
-        return;
-      }
-
-      String userType = userDoc['userType'];
-      switch (userType) {
-        case 'senior':
-          Navigator.pushReplacement(
-              context, MaterialPageRoute(builder: (context) => const SeniorHomeScreen()));
-          break;
-        case 'family':
-          Navigator.pushReplacement(
-              context, MaterialPageRoute(builder: (context) => const FamilyHomeScreen()));
-          break;
-        case 'volunteer':
-          Navigator.pushReplacement(
-              context, MaterialPageRoute(builder: (context) => const VolunteerHomeScreen()));
-          break;
-        default:
-          setState(() {
-            _errorMessage = 'Invalid userType assigned.';
-            _isLoading = false;
-          });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error fetching user data: ${e.toString()}';
+        _errorMessage = e.toString();
         _isLoading = false;
       });
     }
@@ -116,15 +100,31 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Icon(Icons.elderly_outlined, size: 80, color: Theme.of(context).primaryColor),
+                  // App logo or icon
+                  Icon(
+                    Icons.elderly_outlined,
+                    size: 80,
+                    color: Theme.of(context).primaryColor,
+                  ),
                   const SizedBox(height: 24),
-                  const Text('Elderly Care',
-                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.blue),
-                      textAlign: TextAlign.center),
+                  const Text(
+                    'Elderly Care',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 8),
-                  const Text('Connecting seniors with caring supporters',
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
-                      textAlign: TextAlign.center),
+                  const Text(
+                    'Connecting seniors with caring supporters',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 48),
                   TextFormField(
                     controller: _emailController,
@@ -135,8 +135,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       prefixIcon: Icon(Icons.email),
                     ),
                     validator: (value) {
-                      if (value == null || value.isEmpty) return 'Please enter your email';
-                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w]{2,4}$').hasMatch(value)) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your email';
+                      }
+                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
                         return 'Please enter a valid email';
                       }
                       return null;
@@ -151,12 +153,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       border: const OutlineInputBorder(),
                       prefixIcon: const Icon(Icons.lock),
                       suffixIcon: IconButton(
-                        icon: Icon(_isPasswordVisible ? Icons.visibility_off : Icons.visibility),
-                        onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                        icon: Icon(
+                          _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isPasswordVisible = !_isPasswordVisible;
+                          });
+                        },
                       ),
                     ),
                     validator: (value) {
-                      if (value == null || value.isEmpty) return 'Please enter your password';
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your password';
+                      }
                       return null;
                     },
                   ),
@@ -164,25 +174,54 @@ class _LoginScreenState extends State<LoginScreen> {
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
-                      onPressed: () {}, // TODO: Implement Forgot Password
+                      onPressed: () {
+                        // TODO: Implement forgot password
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Forgot password feature coming soon')),
+                        );
+                      },
                       child: const Text('Forgot Password?'),
                     ),
                   ),
                   if (_errorMessage != null) ...[
                     const SizedBox(height: 8),
-                    Text(_errorMessage!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+                    Text(
+                      _errorMessage!,
+                      style: const TextStyle(color: Colors.red),
+                      textAlign: TextAlign.center,
+                    ),
                   ],
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: _isLoading ? null : _signIn,
-                    style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Theme.of(context).primaryColor,
+                      foregroundColor: Colors.white,
+                    ),
                     child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                        : const Text('Sign In', style: TextStyle(fontSize: 16)),
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'Sign In',
+                            style: TextStyle(fontSize: 16),
+                          ),
                   ),
                   const SizedBox(height: 16),
                   TextButton(
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RegisterScreen())),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const RegisterScreen(),
+                        ),
+                      );
+                    },
                     child: const Text("Don't have an account? Register"),
                   ),
                 ],
