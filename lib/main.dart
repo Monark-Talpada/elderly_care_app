@@ -35,11 +35,11 @@ void main() async {
   await NotificationService().initialize();
   
   runApp(
-    MultiProvider(
+     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthService()),
+        Provider<DatabaseService>(create: (_) => DatabaseService()),
       ],
-      child: const MyApp(),
+      child: MyApp(),
     ),
   );
 }
