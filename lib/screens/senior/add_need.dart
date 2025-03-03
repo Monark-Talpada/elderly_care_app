@@ -5,7 +5,7 @@ import 'package:elderly_care_app/services/auth_service.dart';
 import 'package:elderly_care_app/services/database_service.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 class AddNeedScreen extends StatefulWidget {
   final DailyNeed? need; // If provided, we are editing an existing need
   const AddNeedScreen({Key? key, this.need}) : super(key: key);
@@ -93,82 +93,82 @@ class _AddNeedScreenState extends State<AddNeedScreen> {
     );
   }
 
-  Future<void> _saveNeed() async {
-    if (!_formKey.currentState!.validate()) return;
+Future<void> _saveNeed() async {
+  if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+  setState(() {
+    _isLoading = true;
+  });
 
-    try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final databaseService = Provider.of<DatabaseService>(context, listen: false);
-      
-      final currentUser = authService.currentUser;
-      if (currentUser == null) {
-        throw Exception('User not authenticated');
-      }
-      
-      final dueDateTime = _combineDateAndTime();
-      
-      if (_isEditing) {
-        // Update existing need
-        final updatedNeed = widget.need!.copyWith(
-          title: _titleController.text.trim(),
-          description: _descriptionController.text.trim(),
-          type: _selectedType,
-          dueDate: dueDateTime,
-          isRecurring: _isRecurring,
-          recurrenceRule: _isRecurring ? _recurrenceRule : null,
-        );
-        
-        await databaseService.updateNeed(updatedNeed);
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Need updated successfully')),
-          );
-          Navigator.pop(context);
-        }
-      } else {
-        // Create new need
-        final newNeed = DailyNeed(
-          id: const Uuid().v4(),
-          seniorId: currentUser.id, // Changed from uid to id
-          title: _titleController.text.trim(),
-          description: _descriptionController.text.trim(),
-          type: _selectedType,
-          status: NeedStatus.pending,
-          dueDate: dueDateTime, // Combine date and time
-          createdAt: DateTime.now(),
-          isRecurring: _isRecurring,
-          recurrenceRule: _isRecurring ? _recurrenceRule : null,
-        );
-        
-        await databaseService.addNeed(newNeed); // Changed from createNeed to addNeed
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Need created successfully')),
-          );
-          Navigator.pop(context);
-        }
-      }
-    } catch (e) {
-      print('Error saving need: $e');
+  try {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final currentUser = authService.currentUser;
+    
+    if (currentUser == null) {
+      throw Exception('User not authenticated');
+    }
+
+    final firestore = FirebaseFirestore.instance;
+    final dueDateTime = _combineDateAndTime();
+    final needRef = firestore.collection('daily_need').doc(currentUser.id); // Use user ID as doc ID
+
+    final needSnapshot = await needRef.get();
+
+    if (needSnapshot.exists) {
+      // Update existing document
+      await needRef.update({
+        'title': _titleController.text.trim(),
+        'description': _descriptionController.text.trim(),
+        'type': _selectedType.toString().split('.').last,
+        'dueDate': Timestamp.fromDate(dueDateTime),
+        'isRecurring': _isRecurring,
+        'recurrenceRule': _isRecurring ? _recurrenceRule : null,
+        'updatedAt': Timestamp.now(),
+      });
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
+          const SnackBar(content: Text('Need updated successfully')),
         );
+        Navigator.pop(context);
       }
-    } finally {
+    } else {
+      // Create new document
+      await needRef.set({
+        'id': currentUser.id,
+        'title': _titleController.text.trim(),
+        'description': _descriptionController.text.trim(),
+        'type': _selectedType.toString().split('.').last,
+        'status': 'pending',
+        'dueDate': Timestamp.fromDate(dueDateTime),
+        'createdAt': Timestamp.now(),
+        'isRecurring': _isRecurring,
+        'recurrenceRule': _isRecurring ? _recurrenceRule : null,
+      });
+
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Need created successfully')),
+        );
+        Navigator.pop(context);
       }
     }
+  } catch (e) {
+    print('Error saving need: $e');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
