@@ -7,6 +7,7 @@ import 'package:elderly_care_app/screens/family/family_home.dart';
 import 'package:elderly_care_app/screens/senior/senior_home.dart';
 import 'package:elderly_care_app/screens/volunteer/volunteer_home.dart';
 import 'package:elderly_care_app/services/auth_service.dart';
+import 'package:elderly_care_app/services/database_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -34,6 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _navigateToHomeScreen(User user) {
     if (user.userType == UserType.senior) {
+      final senior = user as SeniorCitizen;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (context) => SeniorHomeScreen(),
@@ -45,20 +47,56 @@ class _LoginScreenState extends State<LoginScreen> {
           builder: (context) => FamilyHomeScreen(family: user as FamilyMember),
         ),
       );
-    } else {
+    } else if (user.userType == UserType.volunteer) {
+      final volunteer = user as Volunteer;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => VolunteerHomeScreen(volunteerId: (user as Volunteer).id),
+          builder: (context) => VolunteerHomeScreen(volunteerId: volunteer.id),
         ),
       );
+    } else {
+      // Handle generic user or prompt them to complete profile
+      _showCompleteProfileDialog(user);
     }
   }
 
-  Future<void> _signIn() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+  void _showCompleteProfileDialog(User user) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Complete Your Profile'),
+        content: const Text(
+          'Please select your role to complete your profile setup.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _setupUserProfile(user, UserType.senior);
+            },
+            child: const Text('Senior Citizen'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _setupUserProfile(user, UserType.family);
+            },
+            child: const Text('Family Member'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _setupUserProfile(user, UserType.volunteer);
+            },
+            child: const Text('Volunteer'),
+          ),
+        ],
+      ),
+    );
+  }
 
+  Future<void> _setupUserProfile(User user, UserType selectedType) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -66,17 +104,31 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      final user = await authService.signIn(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-      );
+      User? updatedUser;
 
-      if (user != null) {
-        _navigateToHomeScreen(user);
+      switch (selectedType) {
+        case UserType.senior:
+          updatedUser = await authService.createSeniorProfile(user.id);
+          break;
+        case UserType.family:
+          updatedUser = await authService.createFamilyProfile(user.id);
+          break;
+        case UserType.volunteer:
+          updatedUser = await authService.createVolunteerProfile(user.id);
+          break;
+        default:
+          throw Exception('Invalid user type selected');
+      }
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (updatedUser != null) {
+        _navigateToHomeScreen(updatedUser);
       } else {
         setState(() {
-          _errorMessage = 'Invalid email or password';
-          _isLoading = false;
+          _errorMessage = 'Failed to set up profile. Please try again.';
         });
       }
     } catch (e) {
@@ -86,6 +138,73 @@ class _LoginScreenState extends State<LoginScreen> {
       });
     }
   }
+
+ Future<void> _signIn() async {
+  if (_isLoading) return; // Prevent multiple login attempts
+  
+  if (!_formKey.currentState!.validate()) {
+    return;
+  }
+
+  setState(() {
+    _isLoading = true;
+    _errorMessage = null;
+  });
+
+  try {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    
+    // Add additional logging for debugging
+    print('Attempting to sign in with email: $email');
+    
+    final user = await authService.signIn(email, password);
+
+    if (!mounted) return;
+    
+    if (user != null) {
+      print('User login successful: ${user.id}, Type: ${user.userType}');
+      
+      // Create a database service for the user
+      final databaseService = DatabaseService(userId: user.id);
+      
+      // If user is a senior, fetch the most up-to-date data
+      if (user.userType == UserType.senior) {
+        try {
+          final currentSenior = await databaseService.getCurrentSenior();
+          if (currentSenior != null && mounted) {
+            _navigateToHomeScreen(currentSenior);
+            return;
+          }
+        } catch (e) {
+          print('Error fetching senior data: $e');
+          // Continue with user data we already have
+        }
+      }
+      
+      if (mounted) {
+        // For other user types or if senior data couldn't be fetched
+        _navigateToHomeScreen(user);
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Invalid email or password';
+          _isLoading = false;
+        });
+      }
+    }
+  } catch (e) {
+    print('Login error: $e');
+    if (mounted) {
+      setState(() {
+        _errorMessage = 'Login error: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
+}
 
   @override
   Widget build(BuildContext context) {

@@ -40,7 +40,7 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
     try {
       final dbService = Provider.of<DatabaseService>(context, listen: false);
       
-      // Load connected seniors
+      // Load connected seniors using the updated method from database_service.dart
       final seniors = await dbService.getConnectedSeniors(widget.family.id);
       
       // Load pending needs for all connected seniors
@@ -87,18 +87,23 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
         notificationsEnabled: !widget.family.notificationsEnabled,
       );
       
-      await dbService.updateFamilyMember(updatedFamily);
+      // Use the updateFamilyMember method from database_service.dart
+      final success = await dbService.updateFamilyMember(updatedFamily);
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Notifications ${updatedFamily.notificationsEnabled ? 'enabled' : 'disabled'}',
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Notifications ${updatedFamily.notificationsEnabled ? 'enabled' : 'disabled'}',
+            ),
           ),
-        ),
-      );
-      
-      // Reload data
-      _loadData();
+        );
+        
+        // Reload data
+        _loadData();
+      } else {
+        throw Exception('Failed to update notification settings');
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error updating settings: ${e.toString()}')),
@@ -299,8 +304,14 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
                                           assignedToId: widget.family.id,
                                         );
                                         
-                                        await dbService.updateNeed(updatedNeed);
-                                        _loadData();
+                                        // Use updateNeed method from database_service.dart
+                                        final success = await dbService.updateNeed(updatedNeed);
+                                        
+                                        if (success) {
+                                          _loadData();
+                                        } else {
+                                          throw Exception('Failed to update need status');
+                                        }
                                       } catch (e) {
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           SnackBar(

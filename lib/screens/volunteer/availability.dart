@@ -52,7 +52,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
         availabilityData.forEach((key, value) {
           if (value is List) {
             _availability[key] = (value as List)
-                .map((slot) => TimeSlot.fromJson(Map<String, dynamic>.from(slot)))
+                .map((slot) => TimeSlot.fromMap(Map<String, dynamic>.from(slot)))
                 .toList();
           }
         });
@@ -133,7 +133,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
       final Map<String, List<Map<String, dynamic>>> firebaseAvailability = {};
       
       _availability.forEach((day, slots) {
-        firebaseAvailability[day] = slots.map((slot) => slot.toJson()).toList();
+        firebaseAvailability[day] = slots.map((slot) => slot.toMap()).toList();
       });
       
       // Update directly in Firestore

@@ -71,8 +71,20 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
     if (result != null) {
       try {
         final dbService = Provider.of<DatabaseService>(context, listen: false);
-        await dbService.addNeed(result);
-        _loadNeeds();
+        final needId = await dbService.addNeed(result);
+        
+        if (needId != null) {
+          _loadNeeds();
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Need added successfully')),
+          );
+        } else {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to add need')),
+          );
+        }
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -114,7 +126,15 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
               .where((id) => id != widget.senior.id)
               .toList(),
         );
-        await dbService.updateFamilyMember(updatedFamily);
+        final familyUpdated = await dbService.updateFamilyMember(updatedFamily);
+        
+        if (!familyUpdated) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to update family member')),
+          );
+          return;
+        }
         
         // Update senior
         final updatedSenior = widget.senior.copyWith(
@@ -122,7 +142,15 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
               .where((id) => id != widget.familyMember.id)
               .toList(),
         );
-        await dbService.updateSenior(updatedSenior);
+        final seniorUpdated = await dbService.updateSenior(updatedSenior);
+        
+        if (!seniorUpdated) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to update senior')),
+          );
+          return;
+        }
         
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -377,14 +405,19 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                   : RefreshIndicator(
                       onRefresh: _loadNeeds,
                       child: _needsList.isEmpty
-                          ? const Center(
-                              child: Text(
-                                'No needs added yet',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey,
+                          ? ListView(
+                              children: const [
+                                SizedBox(height: 100),
+                                Center(
+                                  child: Text(
+                                    'No needs added yet',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                              ],
                             )
                           : ListView.builder(
                               padding: const EdgeInsets.all(16),
@@ -406,9 +439,20 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                                         assignedToId: widget.familyMember.id,
                                       );
                                       
-                                      await dbService.updateNeed(updatedNeed);
-                                      _loadNeeds();
+                                      final success = await dbService.updateNeed(updatedNeed);
+                                      
+                                      if (success) {
+                                        _loadNeeds();
+                                      } else {
+                                        if (!mounted) return;
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Failed to update need status'),
+                                          ),
+                                        );
+                                      }
                                     } catch (e) {
+                                      if (!mounted) return;
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
                                           content: Text('Error updating need: ${e.toString()}'),

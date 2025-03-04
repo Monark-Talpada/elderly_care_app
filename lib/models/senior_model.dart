@@ -24,7 +24,7 @@ class SeniorCitizen extends User {
   
   factory SeniorCitizen.fromFirestore(DocumentSnapshot doc) {
     User baseUser = User.fromFirestore(doc);
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    Map data = doc.data() as Map;
     
     return SeniorCitizen(
       id: baseUser.id,
@@ -33,6 +33,26 @@ class SeniorCitizen extends User {
       photoUrl: baseUser.photoUrl,
       phoneNumber: baseUser.phoneNumber,
       createdAt: baseUser.createdAt,
+      connectedFamilyIds: List<String>.from(data['connectedFamilyIds'] ?? []),
+      emergencyModeActive: data['emergencyModeActive'] ?? false,
+      lastKnownLocation: data['lastKnownLocation'],
+      lastLocationUpdate: data['lastLocationUpdate'] != null 
+          ? (data['lastLocationUpdate'] as Timestamp).toDate()
+          : null,
+      fallDetectionEnabled: data['fallDetectionEnabled'] ?? true,
+    );
+  }
+  
+  factory SeniorCitizen.fromMap(Map<String, dynamic> data, String id) {
+    return SeniorCitizen(
+      id: id,
+      email: data['email'] ?? '',
+      name: data['name'] ?? '',
+      photoUrl: data['photoUrl'],
+      phoneNumber: data['phoneNumber'],
+      createdAt: data['createdAt'] != null 
+          ? (data['createdAt'] as Timestamp).toDate() 
+          : DateTime.now(),
       connectedFamilyIds: List<String>.from(data['connectedFamilyIds'] ?? []),
       emergencyModeActive: data['emergencyModeActive'] ?? false,
       lastKnownLocation: data['lastKnownLocation'],

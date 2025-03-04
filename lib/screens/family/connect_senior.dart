@@ -1,5 +1,6 @@
 import 'package:elderly_care_app/models/family_model.dart';
 import 'package:elderly_care_app/models/senior_model.dart';
+import 'package:elderly_care_app/services/auth_service.dart';
 import 'package:elderly_care_app/services/database_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -28,7 +29,11 @@ class _ConnectSeniorScreenState extends State<ConnectSeniorScreen> {
       });
 
       try {
+        // Get both services
+        final authService = Provider.of<AuthService>(context, listen: false);
         final dbService = Provider.of<DatabaseService>(context, listen: false);
+        
+        // First, try to get the senior by email using DatabaseService
         final senior = await dbService.getSeniorByEmail(_email.trim());
         
         if (senior == null) {
@@ -39,6 +44,7 @@ class _ConnectSeniorScreenState extends State<ConnectSeniorScreen> {
           return;
         }
         
+        // Check if already connected
         if (widget.family.connectedSeniorIds.contains(senior.id)) {
           setState(() {
             _errorMessage = 'Already connected to this senior';
@@ -47,23 +53,35 @@ class _ConnectSeniorScreenState extends State<ConnectSeniorScreen> {
           return;
         }
 
+        // Use DatabaseService to update both models
         // Update family member's connectedSeniorIds
         final updatedFamily = widget.family.copyWith(
           connectedSeniorIds: [...widget.family.connectedSeniorIds, senior.id],
         );
-        await dbService.updateFamilyMember(updatedFamily);
+        final familyUpdated = await dbService.updateFamilyMember(updatedFamily);
 
         // Update senior's connectedFamilyIds
         final updatedSenior = senior.copyWith(
           connectedFamilyIds: [...senior.connectedFamilyIds, widget.family.id],
         );
-        await dbService.updateSenior(updatedSenior);
+        final seniorUpdated = await dbService.updateSenior(updatedSenior);
+
+        // Alternatively, we could use the AuthService method:
+        // final success = await authService.connectSeniorWithEmail(_email.trim());
 
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Successfully connected to senior')),
-        );
-        Navigator.of(context).pop();
+        
+        if (familyUpdated && seniorUpdated) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Successfully connected to senior')),
+          );
+          Navigator.of(context).pop();
+        } else {
+          setState(() {
+            _errorMessage = 'Error connecting to senior';
+            _isLoading = false;
+          });
+        }
       } catch (e) {
         setState(() {
           _errorMessage = 'Error connecting to senior: ${e.toString()}';

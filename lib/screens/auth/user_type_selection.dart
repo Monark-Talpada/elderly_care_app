@@ -23,61 +23,46 @@ class UserTypeSelectionScreen extends StatefulWidget {
 }
 
 class _UserTypeSelectionScreenState extends State<UserTypeSelectionScreen> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   bool _isLoading = false;
   String? _errorMessage;
 
   Future<void> _selectUserType(UserType userType) async {
-  setState(() {
-    _isLoading = true;
-    _errorMessage = null;
-  });
-
-  try {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    
-    // Update the user type in Firebase
-    await _firestore.collection('users').doc(widget.userId).update({
-      'userType': userType.toString().split('.').last,
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
     });
-    
-    // Fetch the updated user
-    DocumentSnapshot userDoc = await _firestore
-        .collection('users')
-        .doc(widget.userId)
-        .get();
-    
-    User? user;
-    if (userDoc.exists) {
-      Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
-      String userTypeStr = data['userType'] ?? '';
-      
-      if (userTypeStr == 'senior') {
-        user = SeniorCitizen.fromFirestore(userDoc);
-      } else if (userTypeStr == 'family') {
-        user = FamilyMember.fromFirestore(userDoc);
-      } else if (userTypeStr == 'volunteer') {
-        user = Volunteer.fromFirestore(userDoc);
-      } else {
-        user = User.fromFirestore(userDoc);
-      }
-    }
 
-    if (user != null && mounted) {
-      _navigateToHomeScreen(user);
-    } else {
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      User? user;
+
+      // Create specific profile based on user type
+      if (userType == UserType.senior) {
+        SeniorCitizen? senior = await authService.createSeniorProfile(widget.userId);
+        user = senior;
+      } else if (userType == UserType.family) {
+        FamilyMember? family = await authService.createFamilyProfile(widget.userId);
+        user = family;
+      } else if (userType == UserType.volunteer) {
+        Volunteer? volunteer = await authService.createVolunteerProfile(widget.userId);
+        user = volunteer;
+      }
+
+      if (user != null && mounted) {
+        _navigateToHomeScreen(user);
+      } else {
+        setState(() {
+          _errorMessage = 'Failed to create profile. Please try again.';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
       setState(() {
-        _errorMessage = 'Failed to create profile. Please try again.';
+        _errorMessage = e.toString();
         _isLoading = false;
       });
     }
-  } catch (e) {
-    setState(() {
-      _errorMessage = e.toString();
-      _isLoading = false;
-    });
   }
-}
 
   void _navigateToHomeScreen(User user) {
     if (user.userType == UserType.senior) {

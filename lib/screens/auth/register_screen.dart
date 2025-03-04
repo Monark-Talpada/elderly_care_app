@@ -17,6 +17,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _phoneController = TextEditingController(); // Added phone number field
   bool _isLoading = false;
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
@@ -28,49 +29,63 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
   Future<void> _register() async {
-  if (!_formKey.currentState!.validate()) {
-    return;
-  }
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
-  setState(() {
-    _isLoading = true;
-    _errorMessage = null;
-  });
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-  try {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final user = await authService.register(
-      email: _emailController.text.trim(),
-      password: _passwordController.text.trim(),
-      name: _nameController.text.trim(),
-      userType: UserType.senior, // We'll set this in the next screen
-    );
-
-    if (user != null) {
-      // Navigate to user type selection screen
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => UserTypeSelectionScreen(userId: user.id),
-        ),
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      
+      // Create a basic user with a temporary type (will be updated in the next screen)
+      final user = await authService.register(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+        name: _nameController.text.trim(),
+        userType: UserType.senior, // Temporary value, will be updated in the next screen
+        phoneNumber: _phoneController.text.trim(), // Include phone number if provided
       );
-    } else {
+
+      if (user != null) {
+        // Registration successful, navigate to user type selection screen
+        if (!mounted) return;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => UserTypeSelectionScreen(userId: user.id),
+          ),
+        );
+      } else {
+        setState(() {
+          _errorMessage = 'Registration failed. Please try again.';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
       setState(() {
-        _errorMessage = 'Registration failed. Please try again.';
+        // Provide more user-friendly error messages based on Firebase errors
+        if (e.toString().contains('email-already-in-use')) {
+          _errorMessage = 'This email is already registered. Please use a different email or sign in.';
+        } else if (e.toString().contains('weak-password')) {
+          _errorMessage = 'Password is too weak. Please use a stronger password.';
+        } else if (e.toString().contains('invalid-email')) {
+          _errorMessage = 'Please enter a valid email address.';
+        } else {
+          _errorMessage = 'Registration error: ${e.toString()}';
+        }
         _isLoading = false;
       });
     }
-  } catch (e) {
-    setState(() {
-      _errorMessage = e.toString();
-      _isLoading = false;
-    });
   }
-}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -139,6 +154,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       }
                       return null;
                     },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(
+                      labelText: 'Phone Number (Optional)',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.phone),
+                    ),
+                    // Phone is optional so no validator
                   ),
                   const SizedBox(height: 16),
                   TextFormField(

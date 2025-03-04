@@ -16,27 +16,29 @@ class DatabaseService {
   // Collection references
   CollectionReference get _usersCollection => _firestore.collection('users');
   CollectionReference get _needsCollection => _firestore.collection('needs');
-  CollectionReference get _appointmentsCollection => 
-      _firestore.collection('appointments');
+  CollectionReference get _appointmentsCollection => _firestore.collection('appointments');
+  CollectionReference get _seniorsCollection => _firestore.collection('seniors');
+  CollectionReference get _familyCollection => _firestore.collection('family_member');
+  CollectionReference get _volunteersCollection => _firestore.collection('volunteers');
   
   // Get user-specific needs
   Future<List<DailyNeed>> getSeniorNeeds(String seniorId) async {
-  try {
-    final snapshot = await _needsCollection
-        .where('seniorId', isEqualTo: seniorId)
-        .orderBy('dueDate')
-        .get();
-        
-    return snapshot.docs
-        .map((doc) => DailyNeed.fromFirestore(doc))
-        .toList();
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error getting senior needs: $e');
+    try {
+      final snapshot = await _needsCollection
+          .where('seniorId', isEqualTo: seniorId)
+          .orderBy('dueDate')
+          .get();
+          
+      return snapshot.docs
+          .map((doc) => DailyNeed.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting senior needs: $e');
+      }
+      return [];
     }
-    return [];
   }
-}
   
   // Get needs assigned to a specific user
   Stream<List<DailyNeed>> getAssignedNeeds(String userId) {
@@ -91,10 +93,16 @@ class DatabaseService {
   // Update user location
   Future<bool> updateUserLocation(String userId, GeoPoint location) async {
     try {
+      // Update in both users and seniors collections
       await _usersCollection.doc(userId).update({
+        'lastKnownLocation': location,
+      });
+      
+      await _seniorsCollection.doc(userId).update({
         'lastKnownLocation': location,
         'lastLocationUpdate': FieldValue.serverTimestamp(),
       });
+      
       return true;
     } catch (e) {
       if (kDebugMode) {
@@ -107,13 +115,13 @@ class DatabaseService {
   // Toggle emergency mode
   Future<bool> toggleEmergencyMode(String seniorId, bool isActive) async {
     try {
-      await _usersCollection.doc(seniorId).update({
+      await _seniorsCollection.doc(seniorId).update({
         'emergencyModeActive': isActive,
       });
       
       if (isActive) {
         // Get all connected family members
-        DocumentSnapshot seniorDoc = await _usersCollection.doc(seniorId).get();
+        DocumentSnapshot seniorDoc = await _seniorsCollection.doc(seniorId).get();
         List<String> familyIds = List<String>.from(
             (seniorDoc.data() as Map<String, dynamic>)['connectedFamilyIds'] ?? []);
             
@@ -130,39 +138,49 @@ class DatabaseService {
   }
   
   // Get all connected seniors for a family member
-  // Modify getConnectedSeniors to return List<SeniorCitizen> instead of List<DocumentSnapshot>
-Future<List<SeniorCitizen>> getConnectedSeniors(String familyId) async {
-  try {
-    DocumentSnapshot familyDoc = await _usersCollection.doc(familyId).get();
-    List<String> seniorIds = List<String>.from(
-        (familyDoc.data() as Map<String, dynamic>)['connectedSeniorIds'] ?? []);
-        
-    if (seniorIds.isEmpty) {
+  Future<List<SeniorCitizen>> getConnectedSeniors(String familyId) async {
+    try {
+      DocumentSnapshot familyDoc = await _familyCollection.doc(familyId).get();
+
+      if (!familyDoc.exists || familyDoc.data() == null) {
       return [];
     }
-    
-    List<SeniorCitizen> seniors = [];
-    for (String id in seniorIds) {
-      DocumentSnapshot seniorDoc = await _usersCollection.doc(id).get();
-      if (seniorDoc.exists) {
-        seniors.add(SeniorCitizen.fromFirestore(seniorDoc));
-      }
-    }
-    
-    return seniors;
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error getting connected seniors: $e');
-    }
-    return [];
-  }
-}
 
+      List<String> seniorIds = List<String>.from(
+          (familyDoc.data() as Map<String, dynamic>)['connectedSeniorIds'] ?? []);
+          
+      if (seniorIds.isEmpty) {
+        return [];
+      }
+      
+      List<SeniorCitizen> seniors = [];
+      for (String id in seniorIds) {
+        // Get data from both users and seniors collections
+        DocumentSnapshot userDoc = await _usersCollection.doc(id).get();
+        DocumentSnapshot seniorDoc = await _seniorsCollection.doc(id).get();
+        
+        if (userDoc.exists && seniorDoc.exists) {
+          Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+          Map<String, dynamic> seniorData = seniorDoc.data() as Map<String, dynamic>;
+          Map<String, dynamic> mergedData = {...userData, ...seniorData};
+          
+          seniors.add(SeniorCitizen.fromMap(mergedData, id));
+        }
+      }
+      
+      return seniors;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting connected seniors: $e');
+      }
+      return [];
+    }
+  }
   
   // Get all connected family members for a senior
-  Future<List<DocumentSnapshot>> getConnectedFamilyMembers(String seniorId) async {
+  Future<List<FamilyMember>> getConnectedFamilyMembers(String seniorId) async {
     try {
-      DocumentSnapshot seniorDoc = await _usersCollection.doc(seniorId).get();
+      DocumentSnapshot seniorDoc = await _seniorsCollection.doc(seniorId).get();
       List<String> familyIds = List<String>.from(
           (seniorDoc.data() as Map<String, dynamic>)['connectedFamilyIds'] ?? []);
           
@@ -170,11 +188,18 @@ Future<List<SeniorCitizen>> getConnectedSeniors(String familyId) async {
         return [];
       }
       
-      List<DocumentSnapshot> familyMembers = [];
+      List<FamilyMember> familyMembers = [];
       for (String id in familyIds) {
-        DocumentSnapshot familyDoc = await _usersCollection.doc(id).get();
-        if (familyDoc.exists) {
-          familyMembers.add(familyDoc);
+        // Get data from both users and family_member collections
+        DocumentSnapshot userDoc = await _usersCollection.doc(id).get();
+        DocumentSnapshot familyDoc = await _familyCollection.doc(id).get();
+        
+        if (userDoc.exists && familyDoc.exists) {
+          Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+          Map<String, dynamic> familyData = familyDoc.data() as Map<String, dynamic>;
+          Map<String, dynamic> mergedData = {...userData, ...familyData};
+          
+          familyMembers.add(FamilyMember.fromMap(mergedData, id));
         }
       }
       
@@ -189,115 +214,138 @@ Future<List<SeniorCitizen>> getConnectedSeniors(String familyId) async {
   
   // Volunteer methods
   Future<Volunteer?> getVolunteer(String volunteerId) async {
-  try {
-    DocumentSnapshot doc = await _usersCollection.doc(volunteerId).get();
-    if (!doc.exists) {
+    try {
+      // Get data from both users and volunteers collections
+      DocumentSnapshot userDoc = await _usersCollection.doc(volunteerId).get();
+      DocumentSnapshot volunteerDoc = await _volunteersCollection.doc(volunteerId).get();
+      
+      if (!userDoc.exists || !volunteerDoc.exists) {
+        return null;
+      }
+      
+      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+      Map<String, dynamic> volunteerData = volunteerDoc.data() as Map<String, dynamic>;
+      Map<String, dynamic> mergedData = {...userData, ...volunteerData};
+      
+      return Volunteer.fromMap(mergedData, volunteerId);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting volunteer: $e');
+      }
       return null;
     }
-    return Volunteer.fromFirestore(doc);
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error getting volunteer: $e');
-    }
-    return null;
   }
-}
   
-Future<bool> updateVolunteerTimeSlot(
-  String volunteerId,
-  String day,
-  TimeSlot timeSlot,
-  bool isBooked,
-  String? bookedById,
-) async {
-  try {
-    // First get the volunteer to update their availability map
-    Volunteer? volunteer = await getVolunteer(volunteerId);
-    if (volunteer == null) {
-      return false;
-    }
-    
-    // Find the time slot in the volunteer's availability
-    if (!volunteer.availability.containsKey(day)) {
-      return false;
-    }
-    
-    List<TimeSlot> daySlots = volunteer.availability[day]!;
-    int slotIndex = daySlots.indexWhere((slot) => 
-      slot.startTime == timeSlot.startTime && slot.endTime == timeSlot.endTime);
-    
-    if (slotIndex == -1) {
-      return false;
-    }
-    
-    // Update the time slot
-    TimeSlot updatedSlot = daySlots[slotIndex].copyWith(
-      isBooked: isBooked,
-      bookedById: bookedById,
-    );
-    
-    // Replace the slot in the list
-    List<TimeSlot> updatedSlots = List.from(daySlots);
-    updatedSlots[slotIndex] = updatedSlot;
-    
-    // Create a new availability map
-    Map<String, List<TimeSlot>> updatedAvailability = Map.from(volunteer.availability);
-    updatedAvailability[day] = updatedSlots;
-    
-    // Update the volunteer with the new availability
-    Volunteer updatedVolunteer = volunteer.copyWith(
-      availability: updatedAvailability,
-    );
-    
-    // Convert the updated availability to the format expected by Firestore
-    Map<String, List<Map<String, dynamic>>> firestoreAvailability = {};
-    updatedAvailability.forEach((day, slots) {
-      firestoreAvailability[day] = slots.map((slot) => slot.toJson()).toList();
-    });
-    
-    // Update only the availability field in Firestore
-    await _usersCollection.doc(volunteerId).update({
-      'availability': firestoreAvailability,
-    });
-    
-    return true;
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error updating volunteer time slot: $e');
-    }
-    return false;
-  }
-}
-
-  // Update volunteer availability
-Future<void> updateVolunteerAvailability(String volunteerId, Map<String, List<TimeSlot>> availability) async {
-  try {
-    // Convert availability to the format Firestore can store
-    Map<String, List<Map<String, dynamic>>> availabilityMap = {};
-    availability.forEach((day, slots) {
-      availabilityMap[day] = slots.map((slot) => slot.toJson()).toList();
-    });
-    
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(volunteerId)
-        .update({'availability': availabilityMap});
-  } catch (e) {
-    throw e;
-  }
-}
-  // Get available volunteers
-  Future<List<DocumentSnapshot>> getAvailableVolunteers(
-    String day, 
-    String timeSlot
+  Future<bool> updateVolunteerTimeSlot(
+    String volunteerId,
+    String day,
+    TimeSlot timeSlot,
+    bool isBooked,
+    String? bookedById,
   ) async {
     try {
-      final QuerySnapshot volunteerQuery = await _usersCollection
-          .where('userType', isEqualTo: 'volunteer')
-          .where('availability.$day', arrayContains: timeSlot)
-          .get();
+      // First get the volunteer to update their availability map
+      Volunteer? volunteer = await getVolunteer(volunteerId);
+      if (volunteer == null) {
+        return false;
+      }
+      
+      // Find the time slot in the volunteer's availability
+      if (!volunteer.availability.containsKey(day)) {
+        return false;
+      }
+      
+      List<TimeSlot> daySlots = volunteer.availability[day]!;
+      int slotIndex = daySlots.indexWhere((slot) => 
+        slot.startTime == timeSlot.startTime && slot.endTime == timeSlot.endTime);
+      
+      if (slotIndex == -1) {
+        return false;
+      }
+      
+      // Update the time slot
+      TimeSlot updatedSlot = daySlots[slotIndex].copyWith(
+        isBooked: isBooked,
+        bookedById: bookedById,
+      );
+      
+      // Replace the slot in the list
+      List<TimeSlot> updatedSlots = List.from(daySlots);
+      updatedSlots[slotIndex] = updatedSlot;
+      
+      // Create a new availability map
+      Map<String, List<TimeSlot>> updatedAvailability = Map.from(volunteer.availability);
+      updatedAvailability[day] = updatedSlots;
+      
+      // Convert the updated availability to the format expected by Firestore
+      Map<String, List<Map<String, dynamic>>> firestoreAvailability = {};
+      updatedAvailability.forEach((day, slots) {
+        firestoreAvailability[day] = slots.map((slot) => slot.toMap()).toList();
+      });
+      
+      // Update only the availability field in Firestore
+      await _volunteersCollection.doc(volunteerId).update({
+        'availability': firestoreAvailability,
+      });
+      
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error updating volunteer time slot: $e');
+      }
+      return false;
+    }
+  }
+
+  // Update volunteer availability
+  Future<void> updateVolunteerAvailability(String volunteerId, Map<String, List<TimeSlot>> availability) async {
+    try {
+      // Convert availability to the format Firestore can store
+      Map<String, List<Map<String, dynamic>>> availabilityMap = {};
+      availability.forEach((day, slots) {
+        availabilityMap[day] = slots.map((slot) => slot.toMap()).toList();
+      });
+      
+      await _volunteersCollection.doc(volunteerId).update({'availability': availabilityMap});
+    } catch (e) {
+      throw e;
+    }
+  }
+  
+  // Get available volunteers
+  Future<List<Volunteer>> getAvailableVolunteers(String day, TimeSlot timeSlot) async {
+    try {
+      // Need to query both users and volunteers collections
+      final QuerySnapshot volunteersQuery = await _volunteersCollection.get();
+      
+      List<Volunteer> availableVolunteers = [];
+      
+      for (var doc in volunteersQuery.docs) {
+        String volunteerId = doc.id;
+        DocumentSnapshot userDoc = await _usersCollection.doc(volunteerId).get();
+        
+        if (userDoc.exists) {
+          Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+          Map<String, dynamic> volunteerData = doc.data() as Map<String, dynamic>;
+          Map<String, dynamic> mergedData = {...userData, ...volunteerData};
           
-      return volunteerQuery.docs;
+          Volunteer volunteer = Volunteer.fromMap(mergedData, volunteerId);
+          
+          // Check if volunteer is available at the requested time
+          if (volunteer.availability.containsKey(day)) {
+            bool isAvailable = volunteer.availability[day]!.any((slot) => 
+              slot.startTime == timeSlot.startTime && 
+              slot.endTime == timeSlot.endTime && 
+              !slot.isBooked);
+              
+            if (isAvailable) {
+              availableVolunteers.add(volunteer);
+            }
+          }
+        }
+      }
+      
+      return availableVolunteers;
     } catch (e) {
       if (kDebugMode) {
         print('Error getting available volunteers: $e');
@@ -334,119 +382,141 @@ Future<void> updateVolunteerAvailability(String volunteerId, Map<String, List<Ti
     }
   }
 
-  // Add this to database_service.dart
-Future<SeniorCitizen?> getSeniorById(String seniorId) async {
-  try {
-    DocumentSnapshot doc = await _usersCollection.doc(seniorId).get();
-    if (!doc.exists) {
+  Future<SeniorCitizen?> getSeniorById(String seniorId) async {
+    try {
+      // Get data from both users and seniors collections
+      DocumentSnapshot userDoc = await _usersCollection.doc(seniorId).get();
+      DocumentSnapshot seniorDoc = await _seniorsCollection.doc(seniorId).get();
+      
+      if (!userDoc.exists || !seniorDoc.exists) {
+        return null;
+      }
+      
+      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+      Map<String, dynamic> seniorData = seniorDoc.data() as Map<String, dynamic>;
+      Map<String, dynamic> mergedData = {...userData, ...seniorData};
+      
+      return SeniorCitizen.fromMap(mergedData, seniorId);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting senior by ID: $e');
+      }
       return null;
     }
-    return SeniorCitizen.fromFirestore(doc);
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error getting senior by ID: $e');
-    }
-    return null;
   }
-}
 
   Future<SeniorCitizen?> getCurrentSenior() async {
-  try {
-    if (userId == null) {
+    try {
+      if (userId == null) {
+        return null;
+      }
+      
+      return await getSeniorById(userId!);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting current senior: $e');
+      }
       return null;
     }
-    DocumentSnapshot doc = await _usersCollection.doc(userId).get();
-    if (!doc.exists) {
-      return null;
-    }
-    return SeniorCitizen.fromFirestore(doc);
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error getting current senior: $e');
-    }
-    return null;
   }
-}
   
   // Get appointments for a senior
-  Stream<QuerySnapshot> getSeniorAppointments(String seniorId) {
+  Stream<List<Appointment>> getSeniorAppointments(String seniorId) {
     return _appointmentsCollection
         .where('seniorId', isEqualTo: seniorId)
         .orderBy('appointmentDate')
-        .snapshots();
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+          return Appointment(
+            id: doc.id,
+            seniorId: data['seniorId'],
+            volunteerId: data['volunteerId'],
+            needId: data['needId'],
+            startTime: (data['startTime'] as Timestamp).toDate(),
+            endTime: (data['endTime'] as Timestamp).toDate(),
+            status: _stringToAppointmentStatus(data['status']),
+            notes: data['notes'],
+            createdAt: (data['createdAt'] as Timestamp).toDate(),
+            completedAt: data['completedAt'] != null 
+                ? (data['completedAt'] as Timestamp).toDate() 
+                : null,
+            rating: data['rating'],
+            feedback: data['feedback'],
+          );
+        }).toList());
   }
   
   // Get appointments for a volunteer
- Future<List<Appointment>> getVolunteerAppointments(String volunteerId) async {
-  try {
-    QuerySnapshot snapshot = await _appointmentsCollection
-        .where('volunteerId', isEqualTo: volunteerId)
-        .orderBy('startTime')
-        .get();
-        
-    return snapshot.docs.map((doc) {
-      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-      return Appointment(
-        id: doc.id,
-        seniorId: data['seniorId'],
-        volunteerId: data['volunteerId'],
-        needId: data['needId'],
-        startTime: (data['startTime'] as Timestamp).toDate(),
-        endTime: (data['endTime'] as Timestamp).toDate(),
-        status: _stringToAppointmentStatus(data['status']),
-        notes: data['notes'],
-        createdAt: (data['createdAt'] as Timestamp).toDate(),
-        completedAt: data['completedAt'] != null 
-            ? (data['completedAt'] as Timestamp).toDate() 
-            : null,
-        rating: data['rating'],
-        feedback: data['feedback'],
-      );
-    }).toList();
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error getting volunteer appointments: $e');
+  Future<List<Appointment>> getVolunteerAppointments(String volunteerId) async {
+    try {
+      QuerySnapshot snapshot = await _appointmentsCollection
+          .where('volunteerId', isEqualTo: volunteerId)
+          .orderBy('startTime')
+          .get();
+          
+      return snapshot.docs.map((doc) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        return Appointment(
+          id: doc.id,
+          seniorId: data['seniorId'],
+          volunteerId: data['volunteerId'],
+          needId: data['needId'],
+          startTime: (data['startTime'] as Timestamp).toDate(),
+          endTime: (data['endTime'] as Timestamp).toDate(),
+          status: _stringToAppointmentStatus(data['status']),
+          notes: data['notes'],
+          createdAt: (data['createdAt'] as Timestamp).toDate(),
+          completedAt: data['completedAt'] != null 
+              ? (data['completedAt'] as Timestamp).toDate() 
+              : null,
+          rating: data['rating'],
+          feedback: data['feedback'],
+        );
+      }).toList();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting volunteer appointments: $e');
+      }
+      return [];
     }
-    return [];
   }
-}
 
-// Helper method to convert string to enum
-AppointmentStatus _stringToAppointmentStatus(String status) {
-  switch (status) {
-    case 'scheduled':
-      return AppointmentStatus.scheduled;
-    case 'inProgress':
-      return AppointmentStatus.inProgress;
-    case 'completed':
-      return AppointmentStatus.completed;
-    case 'cancelled':
-      return AppointmentStatus.cancelled;
-    default:
-      return AppointmentStatus.scheduled;
+  // Helper method to convert string to enum
+  AppointmentStatus _stringToAppointmentStatus(String status) {
+    switch (status) {
+      case 'scheduled':
+        return AppointmentStatus.scheduled;
+      case 'inProgress':
+        return AppointmentStatus.inProgress;
+      case 'completed':
+        return AppointmentStatus.completed;
+      case 'cancelled':
+        return AppointmentStatus.cancelled;
+      default:
+        return AppointmentStatus.scheduled;
+    }
   }
-}
   
   // Update appointment status
- Future<bool> updateAppointmentStatus(
-  String appointmentId, 
-  AppointmentStatus newStatus
-) async {
-  try {
-    await _appointmentsCollection.doc(appointmentId).update({
-      'status': newStatus.toString().split('.').last,
-    });
-    return true;
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error updating appointment status: $e');
+  Future<bool> updateAppointmentStatus(
+    String appointmentId, 
+    AppointmentStatus newStatus
+  ) async {
+    try {
+      await _appointmentsCollection.doc(appointmentId).update({
+        'status': newStatus.toString().split('.').last,
+      });
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error updating appointment status: $e');
+      }
+      return false;
     }
-    return false;
   }
-}
-
   
-  // [MISSING METHOD 1] Get senior by email
+  // Get senior by email
   Future<SeniorCitizen?> getSeniorByEmail(String email) async {
     try {
       final querySnapshot = await _usersCollection
@@ -459,8 +529,8 @@ AppointmentStatus _stringToAppointmentStatus(String status) {
         return null;
       }
       
-      final doc = querySnapshot.docs.first;
-      return SeniorCitizen.fromFirestore(doc);
+      String seniorId = querySnapshot.docs.first.id;
+      return await getSeniorById(seniorId);
     } catch (e) {
       if (kDebugMode) {
         print('Error getting senior by email: $e');
@@ -469,12 +539,21 @@ AppointmentStatus _stringToAppointmentStatus(String status) {
     }
   }
   
-  // [MISSING METHOD 2] Update family member
+  // Update family member
   Future<bool> updateFamilyMember(FamilyMember familyMember) async {
     try {
-      await _usersCollection.doc(familyMember.id).update(familyMember.toMap());
-      return true;
-    } catch (e) {
+      DocumentSnapshot docSnapshot = await _familyCollection.doc(familyMember.id).get();
+
+      if (!docSnapshot.exists) {
+      // Document doesn't exist, create it
+      await _familyCollection.doc(familyMember.id).set(familyMember.toMap());
+    } else {
+      // Document exists, update it
+      await _familyCollection.doc(familyMember.id).update(familyMember.toMap());
+    }
+    
+    return true;
+  }catch (e) {
       if (kDebugMode) {
         print('Error updating family member: $e');
       }
@@ -482,10 +561,17 @@ AppointmentStatus _stringToAppointmentStatus(String status) {
     }
   }
   
-  // [MISSING METHOD 3] Update senior
+  // Update senior
   Future<bool> updateSenior(SeniorCitizen senior) async {
     try {
-      await _usersCollection.doc(senior.id).update(senior.toMap());
+      // Update in both users and seniors collections
+      Map<String, dynamic> seniorData = senior.toMap();
+      
+      // Split the data between the two collections if needed
+      // This is a simplified approach, you may need to customize this based on your schema
+      await _usersCollection.doc(senior.id).update(seniorData);
+      await _seniorsCollection.doc(senior.id).update(seniorData);
+      
       return true;
     } catch (e) {
       if (kDebugMode) {
@@ -494,67 +580,69 @@ AppointmentStatus _stringToAppointmentStatus(String status) {
       return false;
     }
   }
-
+  
+  // Create a new appointment
   Future<String?> createAppointment(Appointment appointment) async {
-  try {
-    final Map<String, dynamic> appointmentData = {
-      'seniorId': appointment.seniorId,
-      'volunteerId': appointment.volunteerId,
-      'needId': appointment.needId,
-      'startTime': Timestamp.fromDate(appointment.startTime),
-      'endTime': Timestamp.fromDate(appointment.endTime),
-      'status': appointment.status.toString().split('.').last,
-      'notes': appointment.notes,
-      'createdAt': Timestamp.fromDate(appointment.createdAt),
-      'completedAt': appointment.completedAt != null ? 
-          Timestamp.fromDate(appointment.completedAt!) : null,
-      'rating': appointment.rating,
-      'feedback': appointment.feedback,
-    };
-    
-    DocumentReference docRef = await _appointmentsCollection.add(appointmentData);
-    return docRef.id;
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error creating appointment: $e');
+    try {
+      final Map<String, dynamic> appointmentData = {
+        'seniorId': appointment.seniorId,
+        'volunteerId': appointment.volunteerId,
+        'needId': appointment.needId,
+        'startTime': Timestamp.fromDate(appointment.startTime),
+        'endTime': Timestamp.fromDate(appointment.endTime),
+        'status': appointment.status.toString().split('.').last,
+        'notes': appointment.notes,
+        'createdAt': Timestamp.fromDate(appointment.createdAt),
+        'completedAt': appointment.completedAt != null ? 
+            Timestamp.fromDate(appointment.completedAt!) : null,
+        'rating': appointment.rating,
+        'feedback': appointment.feedback,
+      };
+      
+      DocumentReference docRef = await _appointmentsCollection.add(appointmentData);
+      return docRef.id;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error creating appointment: $e');
+      }
+      return null;
     }
-    return null;
   }
-}
-
-Future<bool> completeAppointment(
-  String appointmentId, 
-  DateTime completionTime
-) async {
-  try {
-    await _appointmentsCollection.doc(appointmentId).update({
-      'completedAt': Timestamp.fromDate(completionTime),
-      'status': 'completed',
-    });
-    return true;
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error completing appointment: $e');
+  
+  // Complete an appointment
+  Future<bool> completeAppointment(
+    String appointmentId, 
+    DateTime completionTime
+  ) async {
+    try {
+      await _appointmentsCollection.doc(appointmentId).update({
+        'completedAt': Timestamp.fromDate(completionTime),
+        'status': 'completed',
+      });
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error completing appointment: $e');
+      }
+      return false;
     }
-    return false;
   }
-}
-
-Future<bool> updateVolunteerHours(
-  String volunteerId,
-  int totalHours
-) async {
-  try {
-    await _usersCollection.doc(volunteerId).update({
-      'totalHoursVolunteered': totalHours,
-    });
-    return true;
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error updating volunteer hours: $e');
+  
+  // Update volunteer hours
+  Future<bool> updateVolunteerHours(
+    String volunteerId,
+    int totalHours
+  ) async {
+    try {
+      await _volunteersCollection.doc(volunteerId).update({
+        'totalHoursVolunteered': totalHours,
+      });
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error updating volunteer hours: $e');
+      }
+      return false;
     }
-    return false;
   }
-}
-
 }

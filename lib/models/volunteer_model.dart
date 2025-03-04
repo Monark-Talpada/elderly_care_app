@@ -60,13 +60,44 @@ class Volunteer extends User {
     );
   }
 
+  factory Volunteer.fromMap(Map<String, dynamic> data, String id) {
+    Map<String, List<TimeSlot>> availabilityMap = {};
+    if (data['availability'] != null) {
+      Map<String, dynamic> rawAvailability = data['availability'];
+      rawAvailability.forEach((day, slots) {
+        availabilityMap[day] = (slots as List)
+            .map((slot) => TimeSlot.fromMap(slot))
+            .toList();
+      });
+    }
+
+    return Volunteer(
+      id: id,
+      email: data['email'] ?? '',
+      name: data['name'] ?? '',
+      photoUrl: data['photoUrl'],
+      phoneNumber: data['phoneNumber'],
+      createdAt: data['createdAt'] != null 
+          ? (data['createdAt'] as Timestamp).toDate() 
+          : DateTime.now(),
+      skills: List<String>.from(data['skills'] ?? []),
+      isVerified: data['isVerified'] ?? false,
+      bio: data['bio'],
+      availability: availabilityMap,
+      totalHoursVolunteered: data['totalHoursVolunteered'] ?? 0,
+      servingAreas: List<String>.from(data['servingAreas'] ?? []),
+      rating: data['rating']?.toDouble(),
+      ratingCount: data['ratingCount'],
+    );
+  }
+
   @override
   Map<String, dynamic> toMap() {
     final Map<String, dynamic> data = super.toMap();
     
     Map<String, List<Map<String, dynamic>>> availabilityMap = {};
     availability.forEach((day, slots) {
-      availabilityMap[day] = slots.map((slot) => slot.toJson()).toList();
+      availabilityMap[day] = slots.map((slot) => slot.toMap()).toList();
     });
     
     data.addAll({
@@ -133,20 +164,13 @@ class TimeSlot {
     );
   }
 
-   Map<String, dynamic> toJson() {
+  Map<String, dynamic> toMap() {
     return {
       'startTime': Timestamp.fromDate(startTime),
       'endTime': Timestamp.fromDate(endTime),
       'isBooked': isBooked,
+      'bookedById': bookedById,
     };
-  }
-
-  factory TimeSlot.fromJson(Map<String, dynamic> json) {
-    return TimeSlot(
-      startTime: (json['startTime'] as Timestamp).toDate(),
-      endTime: (json['endTime'] as Timestamp).toDate(),
-      isBooked: json['isBooked'] ?? false,
-    );
   }
 
   TimeSlot copyWith({
