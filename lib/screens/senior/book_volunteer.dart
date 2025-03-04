@@ -76,7 +76,7 @@ class _BookVolunteerScreenState extends State<BookVolunteerScreen> {
   }
 
   void _bookAppointment() async {
-    if (_senior == null || _volunteer == null || _selectedTimeSlot == null) {
+    if (_senior == null || _volunteer == null || _selectedTimeSlot == null || _selectedDay == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a time slot')),
       );
@@ -88,30 +88,38 @@ class _BookVolunteerScreenState extends State<BookVolunteerScreen> {
     });
 
     try {
-      // Create appointment
-      final appointment = Appointment(
-        id: '', // Will be set by Firestore
-        seniorId: _senior!.id,
-        volunteerId: _volunteer!.id,
-        needId: widget.need?.id,
-        startTime: _selectedTimeSlot!.startTime,
-        endTime: _selectedTimeSlot!.endTime,
-        status: AppointmentStatus.scheduled,
-        notes: _notesController.text,
-        createdAt: DateTime.now(),
-      );
-      
-      // Save appointment to Firestore
-      await _databaseService.createAppointment(appointment);
-      
-      // Update volunteer availability
-      await _databaseService.updateVolunteerTimeSlot(
+      // First, update the volunteer's time slot
+      bool slotUpdated = await _databaseService.updateVolunteerTimeSlot(
         _volunteer!.id,
         _selectedDay!,
         _selectedTimeSlot!,
-        true,
-        _senior!.id,
+        true, // isBooked = true
+        _senior!.id, // bookedById
       );
+      
+      if (!slotUpdated) {
+        throw Exception('Failed to update volunteer time slot');
+      }
+      
+      // Calculate appointment date by combining the day and time
+      DateTime appointmentDate = _selectedTimeSlot!.startTime;
+      
+      // Create description using the notes field and need details if available
+      String description = widget.need != null 
+          ? '${widget.need!.title}: ${widget.need!.description}\n${_notesController.text}' 
+          : _notesController.text;
+      
+      // Book appointment using the method from DatabaseService
+      String? appointmentId = await _databaseService.bookAppointment(
+        seniorId: _senior!.id,
+        volunteerId: _volunteer!.id,
+        appointmentDate: appointmentDate,
+        description: description,
+      );
+      
+      if (appointmentId == null) {
+        throw Exception('Failed to create appointment');
+      }
 
       // If this is for a specific need, update the need
       if (widget.need != null) {
@@ -385,4 +393,3 @@ class _BookVolunteerScreenState extends State<BookVolunteerScreen> {
     }
   }
 }
-

@@ -4,7 +4,7 @@ import 'package:elderly_care_app/models/senior_model.dart';
 import 'package:elderly_care_app/models/need_model.dart';
 import 'package:elderly_care_app/services/auth_service.dart';
 import 'package:elderly_care_app/services/database_service.dart';
-import 'package:elderly_care_app/screens/senior/add_need.dart'; // Import the AddNeed screen
+import 'package:elderly_care_app/utils/navigation_utils.dart';
 import 'package:intl/intl.dart';
 
 class SeniorHomeScreen extends StatefulWidget {
@@ -96,23 +96,6 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
     }
   }
 
-  // Navigate to AddNeed screen
-  void _navigateToAddNeed() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const AddNeedScreen()),
-    );
-  }
-
-  // Navigate to other screens with proper routes
-  void _navigateToScreen(String route, {dynamic arguments}) {
-    if (arguments != null) {
-      Navigator.pushNamed(context, route, arguments: arguments);
-    } else {
-      Navigator.pushNamed(context, route);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -138,8 +121,12 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
-              _navigateToScreen('/senior/profile');
+              Navigator.pushNamed(context, '/senior/profile');
             },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _signOut,
           ),
         ],
       ),
@@ -255,7 +242,7 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
             ),
             TextButton(
               onPressed: () {
-                _navigateToScreen('/senior/daily_needs');
+                Navigator.pushNamed(context, '/senior/daily_needs');
               },
               child: const Text('View All'),
             ),
@@ -326,8 +313,12 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
         trailing: _getStatusChip(need.status),
         isThreeLine: true,
         onTap: () {
-          // Navigate to need details with the need as an argument
-          _navigateToScreen('/senior/need_details', arguments: need);
+          // Navigate to need details
+          Navigator.pushNamed(
+            context, 
+            '/senior/need_details',
+            arguments: need,
+          );
         },
       ),
     );
@@ -387,25 +378,25 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
               'Add Need',
               Icons.add_task,
               Colors.green,
-              _navigateToAddNeed, // Direct navigation to AddNeedScreen
+              () => Navigator.pushNamed(context, '/senior/add_need'),
             ),
             _buildActionCard(
               'Book Volunteer',
               Icons.people,
               Colors.blue,
-              () => _navigateToScreen('/senior/book_volunteer'),
+              () => Navigator.pushNamed(context, '/senior/book_volunteer'),
             ),
             _buildActionCard(
               'Family Members',
               Icons.family_restroom,
               Colors.purple,
-              () => _navigateToScreen('/senior/family_connections'),
+              () => Navigator.pushNamed(context, '/senior/family_connections'),
             ),
             _buildActionCard(
               'Emergency Contacts',
               Icons.emergency,
               Colors.red,
-              () => _navigateToScreen('/senior/emergency_contacts'),
+              () => Navigator.pushNamed(context, '/senior/emergency_contacts'),
             ),
           ],
         ),
@@ -444,4 +435,17 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
       ),
     );
   }
+
+  Future<void> _signOut() async {
+  try {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    await authService.signOut();
+    
+    NavigationUtils.signOut(context);
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error signing out: ${e.toString()}')),
+    );
+  }
+}
 }

@@ -1,36 +1,61 @@
 import 'package:elderly_care_app/firebase_options.dart';
 import 'package:elderly_care_app/screens/auth/login_screen.dart';
+import 'package:elderly_care_app/screens/auth/register_screen.dart';
+import 'package:elderly_care_app/screens/auth/user_type_selection.dart';
+import 'package:elderly_care_app/screens/family/family_home.dart';
+import 'package:elderly_care_app/screens/senior/senior_home.dart';
+import 'package:elderly_care_app/screens/volunteer/volunteer_home.dart';
+
+// New screen imports
+import 'package:elderly_care_app/screens/family/connect_senior.dart';
+import 'package:elderly_care_app/screens/family/senior_profile.dart';
+import 'package:elderly_care_app/screens/family/emergency_map.dart';
+
+// Needs-related imports
+import 'package:elderly_care_app/screens/senior/daily_needs.dart';
+import 'package:elderly_care_app/screens/senior/add_need.dart';
+import 'package:elderly_care_app/screens/senior/book_volunteer.dart';
+
+import 'package:elderly_care_app/screens/senior/emergency_button.dart';
+import 'package:elderly_care_app/screens/senior/senior_home.dart';
+
+// Volunteer-related imports
+import 'package:elderly_care_app/screens/volunteer/appointments.dart';
+import 'package:elderly_care_app/screens/volunteer/availability.dart';
+
 import 'package:elderly_care_app/services/auth_service.dart';
-import 'package:elderly_care_app/services/database_service.dart';
 import 'package:elderly_care_app/services/notification_service.dart';
+import 'package:elderly_care_app/services/database_service.dart';
+import 'package:elderly_care_app/services/storage_service.dart';
+
+import 'package:elderly_care_app/models/family_model.dart';
+import 'package:elderly_care_app/models/senior_model.dart';
+import 'package:elderly_care_app/models/volunteer_model.dart';
+import 'package:elderly_care_app/models/need_model.dart';
+import 'package:elderly_care_app/models/appointment_model.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 void main() async {
-  
-  
   WidgetsFlutterBinding.ensureInitialized();
 
   if(kIsWeb){
-  await Firebase.initializeApp(
-    options: FirebaseOptions(
-      apiKey: "AIzaSyAkwW8eKLiqRrHeywhnZqu_nOOl42VZVY8",
-      authDomain: "elderlycareapp-35250.firebaseapp.com",
-      projectId: "elderlycareapp-35250",
-      storageBucket: "elderlycareapp-35250.firebasestorage.app",
-      messagingSenderId: "1001240832274",
-      appId: "1:1001240832274:web:4f01f16828a9a6fb35ebcb")
-  );
+    await Firebase.initializeApp(
+      options: FirebaseOptions(
+        apiKey: "AIzaSyAkwW8eKLiqRrHeywhnZqu_nOOl42VZVY8",
+        authDomain: "elderlycareapp-35250.firebaseapp.com",
+        projectId: "elderlycareapp-35250",
+        storageBucket: "elderlycareapp-35250.firebasestorage.app",
+        messagingSenderId: "1001240832274",
+        appId: "1:1001240832274:web:4f01f16828a9a6fb35ebcb"
+      )
+    );
+  } else {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
   }
- else{
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  }
-  
-  
   
   // Initialize notifications
   await NotificationService().initialize();
@@ -40,6 +65,10 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
         Provider<DatabaseService>(create: (_) => DatabaseService()),
+         Provider<NotificationService>(create: (_) => NotificationService()),
+        
+        // Storage Service - providing as a service
+        Provider<StorageService>(create: (_) => StorageService()),
       ],
       child: const MyApp(),
     ),
@@ -63,7 +92,90 @@ class MyApp extends StatelessWidget {
           secondary: Colors.orange,
         ),
       ),
-      home: const LoginScreen(),
+      // Updated routes to include new screens
+        routes: {
+      '/': (context) => const LoginScreen(),
+      '/login': (context) => const LoginScreen(),
+      '/register': (context) => const RegisterScreen(),
+      '/user_type_selection': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as String;
+        return UserTypeSelectionScreen(userId: args);
+      },
+      '/senior_home': (context) => const SeniorHomeScreen(),
+      '/family_home': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as FamilyMember;
+        return FamilyHomeScreen(family: args);
+      },
+      '/volunteer_home': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as Volunteer;
+        return VolunteerHomeScreen(volunteerId: args.id);
+      },
+      
+      // Emergency and additional screens
+      '/emergency_button': (context) => const EmergencyButtonScreen(),
+      
+      // Family screens
+      '/family/connect_senior': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as FamilyMember;
+        return ConnectSeniorScreen(family: args);
+      },
+      '/family/senior_profile': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+        return SeniorProfileScreen(
+          senior: args['senior'] as SeniorCitizen, 
+          familyMember: args['familyMember'] as FamilyMember,
+        );
+      },
+      '/family/emergency_map': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as List<SeniorCitizen>;
+        return EmergencyMapScreen(seniors: args);
+      },
+      
+      // Senior Needs-related routes
+      '/senior/daily_needs': (context) => const DailyNeedsScreen(),
+      '/senior/add_need': (context) => const AddNeedScreen(),
+      '/senior/edit_need': (context) {
+        final need = ModalRoute.of(context)!.settings.arguments as DailyNeed;
+        return AddNeedScreen(need: need);
+      },
+      '/senior/profile': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+        return SeniorProfileScreen(
+          senior: args['senior'] as SeniorCitizen,
+          familyMember: args['familyMember'] as FamilyMember,
+        );
+      },
+      '/senior/book_volunteer': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+        return BookVolunteerScreen(
+          volunteerId: args['volunteerId'] as String,
+          need: args['need'] as DailyNeed?,
+        );
+      },
+
+      // Volunteer-related routes
+      '/volunteer/appointments': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as Volunteer;
+        return AppointmentsScreen(volunteer: args);
+      },
+      '/volunteer/availability': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as Volunteer;
+        return AvailabilityScreen(volunteer: args);
+      },
+    },
+      initialRoute: '/',
+      onGenerateRoute: (settings) {
+        // Handle any dynamic routing logic here if needed
+        return null;
+      },
+      onUnknownRoute: (settings) {
+        return MaterialPageRoute(
+          builder: (context) => Scaffold(
+            appBar: AppBar(title: const Text('Not Found')),
+            body: const Center(child: Text('Page not found')),
+          ),
+        );
+      },
     );
   }
 }

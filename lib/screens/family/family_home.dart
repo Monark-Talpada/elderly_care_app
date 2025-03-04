@@ -7,6 +7,7 @@ import 'package:elderly_care_app/screens/family/senior_profile.dart';
 import 'package:elderly_care_app/services/auth_service.dart';
 import 'package:elderly_care_app/services/database_service.dart';
 import 'package:elderly_care_app/widgets/need_card.dart';
+import 'package:elderly_care_app/utils/navigation_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -67,18 +68,17 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
   }
 
   Future<void> _signOut() async {
-    try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      await authService.signOut();
-      
-      if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed('/login');
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error signing out: ${e.toString()}')),
-      );
-    }
+  try {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    await authService.signOut();
+    
+    NavigationUtils.signOut(context);
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error signing out: ${e.toString()}')),
+    );
   }
+}
 
   Future<void> _toggleNotifications() async {
     try {

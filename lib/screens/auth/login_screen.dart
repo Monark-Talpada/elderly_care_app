@@ -8,6 +8,7 @@ import 'package:elderly_care_app/screens/senior/senior_home.dart';
 import 'package:elderly_care_app/screens/volunteer/volunteer_home.dart';
 import 'package:elderly_care_app/services/auth_service.dart';
 import 'package:elderly_care_app/services/database_service.dart';
+import 'package:elderly_care_app/utils/navigation_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -174,7 +175,7 @@ class _LoginScreenState extends State<LoginScreen> {
         try {
           final currentSenior = await databaseService.getCurrentSenior();
           if (currentSenior != null && mounted) {
-            _navigateToHomeScreen(currentSenior);
+            NavigationUtils.navigateAfterLogin(context, currentSenior);
             return;
           }
         } catch (e) {
@@ -185,7 +186,7 @@ class _LoginScreenState extends State<LoginScreen> {
       
       if (mounted) {
         // For other user types or if senior data couldn't be fetched
-        _navigateToHomeScreen(user);
+        NavigationUtils.navigateAfterLogin(context, user);
       }
     } else {
       if (mounted) {

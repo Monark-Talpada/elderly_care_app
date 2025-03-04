@@ -104,4 +104,6 @@ class DailyNeed {
       recurrenceRule: recurrenceRule ?? this.recurrenceRule,
     );
   }
+
+  
 }

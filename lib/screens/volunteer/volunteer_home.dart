@@ -6,6 +6,7 @@ import 'package:elderly_care_app/services/auth_service.dart';
 import 'package:elderly_care_app/services/database_service.dart';
 import 'package:elderly_care_app/screens/volunteer/availability.dart';
 import 'package:elderly_care_app/screens/volunteer/appointments.dart';
+import 'package:elderly_care_app/utils/navigation_utils.dart';
 
 class VolunteerHomeScreen extends StatefulWidget {
   final String volunteerId;
@@ -63,15 +64,15 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   }
 
   Future<void> _signOut() async {
-    try {
-      await _authService.signOut();
-      Navigator.of(context).pushReplacementNamed('/login');
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error signing out: $e')),
-      );
-    }
+  try {
+    await _authService.signOut();
+    NavigationUtils.signOut(context);
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error signing out: $e')),
+    );
   }
+}
   
   @override
   Widget build(BuildContext context) {

@@ -41,8 +41,9 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
     try {
       final user = _authService.currentUser;
       if (user != null) {
-        // Use currentSenior from DatabaseService
-        final senior = await _databaseService.getSeniorById(user.id);
+        // Get current senior using getCurrentSenior or getSeniorById
+        final senior = await _databaseService.getCurrentSenior() ?? 
+                       await _databaseService.getSeniorById(user.id);
         
         // Get needs for the current user
         final needs = await _databaseService.getSeniorNeeds(user.id);
@@ -84,21 +85,25 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
   Future<void> _updateNeedStatus(DailyNeed need, NeedStatus newStatus) async {
     try {
       final updatedNeed = need.copyWith(status: newStatus);
-      await _databaseService.updateNeed(updatedNeed);
+      final success = await _databaseService.updateNeed(updatedNeed);
       
-      setState(() {
-        final index = _allNeeds.indexWhere((n) => n.id == need.id);
-        if (index != -1) {
-          _allNeeds[index] = updatedNeed;
-        }
-      });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Need status updated'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (success) {
+        setState(() {
+          final index = _allNeeds.indexWhere((n) => n.id == need.id);
+          if (index != -1) {
+            _allNeeds[index] = updatedNeed;
+          }
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Need status updated'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        throw Exception('Failed to update need status');
+      }
     } catch (e) {
       print('Error updating need status: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -112,18 +117,22 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
 
   Future<void> _deleteNeed(DailyNeed need) async {
     try {
-      await _databaseService.deleteNeed(need.id);
+      final success = await _databaseService.deleteNeed(need.id);
       
-      setState(() {
-        _allNeeds.removeWhere((n) => n.id == need.id);
-      });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Need deleted'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (success) {
+        setState(() {
+          _allNeeds.removeWhere((n) => n.id == need.id);
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Need deleted'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        throw Exception('Failed to delete need');
+      }
     } catch (e) {
       print('Error deleting need: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -181,8 +190,11 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
               ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.pushNamed(context, '/senior/add_need').then((_) => _loadNeeds());
+        onPressed: () async {
+          final result = await Navigator.pushNamed(context, '/senior/add_need');
+          if (result == true) {
+            _loadNeeds();
+          }
         },
         child: const Icon(Icons.add),
         tooltip: 'Add New Need',
@@ -271,6 +283,21 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
                   ),
                   const SizedBox(height: 16),
                 ],
+                if (need.assignedToId != null) ...[
+                  Row(
+                    children: [
+                      Icon(Icons.person, size: 16, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Assigned to: ${need.assignedToId}',
+                        style: TextStyle(
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -290,12 +317,15 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
                     TextButton.icon(
                       icon: const Icon(Icons.edit),
                       label: const Text('Edit'),
-                      onPressed: () {
-                        Navigator.pushNamed(
+                      onPressed: () async {
+                        final result = await Navigator.pushNamed(
                           context, 
                           '/senior/edit_need',
                           arguments: need,
-                        ).then((_) => _loadNeeds());
+                        );
+                        if (result == true) {
+                          _loadNeeds();
+                        }
                       },
                     ),
                     const SizedBox(width: 8),
