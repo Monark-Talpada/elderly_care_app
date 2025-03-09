@@ -10,6 +10,7 @@ class Volunteer extends User {
   final List<String> servingAreas;
   final double? rating;
   final int? ratingCount;
+  final int experienceYears;
 
   Volunteer({
     required super.id,
@@ -26,6 +27,7 @@ class Volunteer extends User {
     this.servingAreas = const [],
     this.rating,
     this.ratingCount,
+    this.experienceYears = 0,
   }) : super(userType: UserType.volunteer);
 
   factory Volunteer.fromFirestore(DocumentSnapshot doc) {
@@ -57,6 +59,7 @@ class Volunteer extends User {
       servingAreas: List<String>.from(data['servingAreas'] ?? []),
       rating: data['rating']?.toDouble(),
       ratingCount: data['ratingCount'],
+      experienceYears: data['experienceYears'] ?? 0,
     );
   }
 
@@ -76,9 +79,11 @@ class Volunteer extends User {
       email: data['email'] ?? '',
       name: data['name'] ?? '',
       photoUrl: data['photoUrl'],
-      phoneNumber: data['phoneNumber'],
+      phoneNumber: data['phoneNumber'] ?? data['phone'],
       createdAt: data['createdAt'] != null 
-          ? (data['createdAt'] as Timestamp).toDate() 
+          ? (data['createdAt'] is Timestamp 
+              ? (data['createdAt'] as Timestamp).toDate() 
+              : data['createdAt']) 
           : DateTime.now(),
       skills: List<String>.from(data['skills'] ?? []),
       isVerified: data['isVerified'] ?? false,
@@ -88,6 +93,7 @@ class Volunteer extends User {
       servingAreas: List<String>.from(data['servingAreas'] ?? []),
       rating: data['rating']?.toDouble(),
       ratingCount: data['ratingCount'],
+      experienceYears: data['experienceYears'] ?? 0,
     );
   }
 
@@ -109,6 +115,7 @@ class Volunteer extends User {
       'servingAreas': servingAreas,
       'rating': rating,
       'ratingCount': ratingCount,
+      'experienceYears': experienceYears,
     });
     return data;
   }
@@ -122,6 +129,7 @@ class Volunteer extends User {
     List<String>? servingAreas,
     double? rating,
     int? ratingCount,
+    int? experienceYears,
   }) {
     return Volunteer(
       id: id,
@@ -138,6 +146,7 @@ class Volunteer extends User {
       servingAreas: servingAreas ?? this.servingAreas,
       rating: rating ?? this.rating,
       ratingCount: ratingCount ?? this.ratingCount,
+      experienceYears: experienceYears ?? this.experienceYears,
     );
   }
 }
@@ -156,9 +165,43 @@ class TimeSlot {
   });
 
   factory TimeSlot.fromMap(Map<String, dynamic> map) {
+    // Handle both DateTime and String time formats
+    DateTime parseStartTime;
+    DateTime parseEndTime;
+
+    if (map['startTime'] is Timestamp) {
+      parseStartTime = (map['startTime'] as Timestamp).toDate();
+      parseEndTime = (map['endTime'] as Timestamp).toDate();
+    } else if (map['startTime'] is String) {
+      // Parse from HH:MM format
+      final startTimeParts = (map['startTime'] as String).split(':');
+      final endTimeParts = (map['endTime'] as String).split(':');
+      
+      final now = DateTime.now();
+      parseStartTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        int.parse(startTimeParts[0]),
+        int.parse(startTimeParts[1]),
+      );
+      
+      parseEndTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        int.parse(endTimeParts[0]),
+        int.parse(endTimeParts[1]),
+      );
+    } else {
+      // Default to current time if format is unknown
+      parseStartTime = DateTime.now();
+      parseEndTime = DateTime.now().add(const Duration(hours: 1));
+    }
+
     return TimeSlot(
-      startTime: (map['startTime'] as Timestamp).toDate(),
-      endTime: (map['endTime'] as Timestamp).toDate(),
+      startTime: parseStartTime,
+      endTime: parseEndTime,
       isBooked: map['isBooked'] ?? false,
       bookedById: map['bookedById'],
     );
@@ -173,6 +216,13 @@ class TimeSlot {
     };
   }
 
+  // Get hours and minutes as strings for UI display
+  String get startTimeString => 
+      '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}';
+
+  String get endTimeString => 
+      '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}';
+
   TimeSlot copyWith({
     DateTime? startTime,
     DateTime? endTime,
@@ -184,6 +234,36 @@ class TimeSlot {
       endTime: endTime ?? this.endTime,
       isBooked: isBooked ?? this.isBooked,
       bookedById: bookedById ?? this.bookedById,
+    );
+  }
+
+  // Create a TimeSlot from hour and minute values
+  factory TimeSlot.fromHourMinute({
+    required int startHour,
+    required int startMinute,
+    required int endHour,
+    required int endMinute,
+    bool isBooked = false,
+    String? bookedById,
+  }) {
+    final now = DateTime.now();
+    return TimeSlot(
+      startTime: DateTime(
+        now.year,
+        now.month,
+        now.day,
+        startHour,
+        startMinute,
+      ),
+      endTime: DateTime(
+        now.year,
+        now.month,
+        now.day,
+        endHour,
+        endMinute,
+      ),
+      isBooked: isBooked,
+      bookedById: bookedById,
     );
   }
 }

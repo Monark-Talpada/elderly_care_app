@@ -384,7 +384,7 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
               'Book Volunteer',
               Icons.people,
               Colors.blue,
-              () => Navigator.pushNamed(context, '/senior/book_volunteer'),
+              () => Navigator.pushNamed(context, '/senior/select_volunteer'),
             ),
             _buildActionCard(
               'Family Members',

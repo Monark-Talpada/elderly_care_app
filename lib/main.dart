@@ -14,10 +14,9 @@ import 'package:elderly_care_app/screens/family/emergency_map.dart';
 // Needs-related imports
 import 'package:elderly_care_app/screens/senior/daily_needs.dart';
 import 'package:elderly_care_app/screens/senior/add_need.dart';
-import 'package:elderly_care_app/screens/senior/book_volunteer.dart';
-
+import 'screens/senior/senior_profile_screen.dart';
+import 'screens/senior/select_volunteer.dart';
 import 'package:elderly_care_app/screens/senior/emergency_button.dart';
-import 'package:elderly_care_app/screens/senior/senior_home.dart';
 
 // Volunteer-related imports
 import 'package:elderly_care_app/screens/volunteer/appointments.dart';
@@ -32,7 +31,6 @@ import 'package:elderly_care_app/models/family_model.dart';
 import 'package:elderly_care_app/models/senior_model.dart';
 import 'package:elderly_care_app/models/volunteer_model.dart';
 import 'package:elderly_care_app/models/need_model.dart';
-import 'package:elderly_care_app/models/appointment_model.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -138,20 +136,9 @@ class MyApp extends StatelessWidget {
         final need = ModalRoute.of(context)!.settings.arguments as DailyNeed;
         return AddNeedScreen(need: need);
       },
-      '/senior/profile': (context) {
-        final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-        return SeniorProfileScreen(
-          senior: args['senior'] as SeniorCitizen,
-          familyMember: args['familyMember'] as FamilyMember,
-        );
-      },
-      '/senior/book_volunteer': (context) {
-        final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-        return BookVolunteerScreen(
-          volunteerId: args['volunteerId'] as String,
-          need: args['need'] as DailyNeed?,
-        );
-      },
+      '/senior/profile': (context) => SeniorProfile(),
+      
+      '/senior/select_volunteer': (context) => const SelectVolunteerScreen(),
 
       // Volunteer-related routes
       '/volunteer/appointments': (context) {
