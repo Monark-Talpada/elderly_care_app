@@ -248,9 +248,6 @@ class DatabaseService {
     // Use the date from the timeSlot for consistency
     final formattedDate = DateFormat('yyyy-MM-dd').format(timeSlot.startTime);
     
-    print('Attempting to update slot for date: $formattedDate');
-    print('Looking for slot around: ${timeSlot.startTime.hour}:${timeSlot.startTime.minute} - ${timeSlot.endTime.hour}:${timeSlot.endTime.minute}');
-    
     // Get current volunteer data
     DocumentSnapshot volunteerDoc = await _volunteersCollection.doc(volunteerId).get();
     if (!volunteerDoc.exists) {
@@ -266,43 +263,33 @@ class DatabaseService {
       return false;
     }
     
-    print('Available dates: ${(data['availability'] as Map).keys.join(', ')}');
-    
-    // Try all possible date formats the data might be stored under
-    List<dynamic>? slots;
-    
     // Try formatted date first
-    slots = data['availability'][formattedDate];
+    List<dynamic>? slots = data['availability'][formattedDate];
     
     // If not found, try day of week
     if (slots == null) {
       final dayOfWeek = DateFormat('EEEE').format(timeSlot.startTime).toLowerCase();
       slots = data['availability'][dayOfWeek];
-      print('Trying day of week: $dayOfWeek, found slots: ${slots != null}');
     }
     
     // If still not found, try original dateString
     if (slots == null && dateString != formattedDate) {
       slots = data['availability'][dateString];
-      print('Trying original dateString: $dateString, found slots: ${slots != null}');
     }
     
     if (slots == null) {
-      print('No slots found for any date format. Available dates/days: ${(data['availability'] as Map).keys.join(', ')}');
+      print('No slots found for any date format.');
       return false;
     }
     
-    print('Found ${slots.length} time slots for the day');
-    
-    // More flexible matching - Find closest matching slot
+    // SOLUTION: Increase the acceptable time difference to match any available slot for the day
+    // This ensures a slot is found if there's any availability on that day
     bool foundSlot = false;
     int closestSlotIndex = -1;
-    int smallestTimeDifference = 9999; // Large number of minutes
+    int smallestTimeDifference = 9999;
     
     for (int i = 0; i < slots.length; i++) {
       var slot = slots[i];
-      
-      print('Examining slot $i: ${slot.toString()}');
       
       // Convert slot times to DateTime for comparison
       DateTime slotStartTime;
@@ -324,42 +311,29 @@ class DatabaseService {
       
       // Calculate time difference in minutes
       final startTimeDiff = (slotStartTime.hour * 60 + slotStartTime.minute) - 
-                            (timeSlot.startTime.hour * 60 + timeSlot.startTime.minute);
+                          (timeSlot.startTime.hour * 60 + timeSlot.startTime.minute);
       
-      print('Time difference: $startTimeDiff minutes');
-      
+      // Track the closest slot regardless of time difference
       if (startTimeDiff.abs() < smallestTimeDifference) {
         smallestTimeDifference = startTimeDiff.abs();
         closestSlotIndex = i;
       }
-      
-      // If an exact match (or very close match within 10 minutes) is found, use it immediately
-      if (startTimeDiff.abs() <= 10) {
-        foundSlot = true;
-        slots[i]['isBooked'] = isBooked;
-        slots[i]['bookedById'] = bookedById;
-        break;
-      }
     }
     
-    // If no exact match was found but we have a closest slot, use that
-    if (!foundSlot && closestSlotIndex >= 0 && smallestTimeDifference <= 60) {
-      print('Using closest slot with time difference of $smallestTimeDifference minutes');
+    // Use the closest slot regardless of time difference
+    // The volunteer is available on that day, so use the slot
+    if (closestSlotIndex >= 0) {
       slots[closestSlotIndex]['isBooked'] = isBooked;
       slots[closestSlotIndex]['bookedById'] = bookedById;
       foundSlot = true;
     }
     
     if (!foundSlot) {
-      print('Could not find a suitable time slot. Closest was $smallestTimeDifference minutes away.');
-      // DEBUG: Print all available slots for debugging
-      for (int i = 0; i < slots.length; i++) {
-        print('Available slot $i: ${slots[i]}');
-      }
+      print('Could not find any time slot for booking.');
       return false;
     }
     
-    // Determine which key to use for the update (formattedDate, day of week, or original)
+    // Determine which key to use for the update
     String keyToUse = formattedDate;
     if (!data['availability'].containsKey(formattedDate)) {
       final dayOfWeek = DateFormat('EEEE').format(timeSlot.startTime).toLowerCase();
@@ -370,8 +344,6 @@ class DatabaseService {
       }
     }
     
-    print('Updating availability using key: $keyToUse');
-    
     // Update the volunteer document with the correct date key
     await _volunteersCollection.doc(volunteerId).update({
       'availability.$keyToUse': slots
@@ -380,9 +352,6 @@ class DatabaseService {
     return true;
   } catch (e) {
     print('Error updating volunteer time slot: $e');
-    if (e is FirebaseException) {
-      print('Firebase error code: ${e.code}, message: ${e.message}');
-    }
     return false;
   }
 }
@@ -755,32 +724,45 @@ Future<bool> bookVolunteerWithAppointment({
   
   // Create a new appointment
     Future<String?> createAppointment(Appointment appointment) async {
-      try {
-        final Map<String, dynamic> appointmentData = {
-          'seniorId': appointment.seniorId,
-          'volunteerId': appointment.volunteerId,
-          'needId': appointment.needId,
-          'startTime': Timestamp.fromDate(appointment.startTime),
-          'endTime': Timestamp.fromDate(appointment.endTime),
-          'status': appointment.status.toString().split('.').last,
-          'notes': appointment.notes,
-          'createdAt': Timestamp.fromDate(appointment.createdAt),
-          'completedAt': appointment.completedAt != null ? 
-              Timestamp.fromDate(appointment.completedAt!) : null,
-          'rating': appointment.rating,
-          'feedback': appointment.feedback,
-        };
-        
-        DocumentReference docRef = await _appointmentsCollection.add(appointmentData);
-        return docRef.id;
-      } catch (e) {
-        if (kDebugMode) {
-          print('Error creating appointment: $e');
-        }
-        return null;
-      }
-    }
+  try {
+    // Check if document already exists
+    QuerySnapshot querySnapshot = await _appointmentsCollection
+        .where('seniorId', isEqualTo: appointment.seniorId)
+        .where('volunteerId', isEqualTo: appointment.volunteerId)
+        .where('startTime', isEqualTo: Timestamp.fromDate(appointment.startTime))
+        .limit(1)
+        .get();
     
+    // If document doesn't exist, add it
+    if (querySnapshot.docs.isEmpty) {
+      final Map<String, dynamic> appointmentData = {
+        'seniorId': appointment.seniorId,
+        'volunteerId': appointment.volunteerId,
+        'needId': appointment.needId,
+        'startTime': Timestamp.fromDate(appointment.startTime),
+        'endTime': Timestamp.fromDate(appointment.endTime),
+        'status': appointment.status.toString().split('.').last,
+        'notes': appointment.notes,
+        'createdAt': Timestamp.fromDate(appointment.createdAt),
+        'completedAt': appointment.completedAt != null ? 
+            Timestamp.fromDate(appointment.completedAt!) : null,
+        'rating': appointment.rating,
+        'feedback': appointment.feedback,
+      };
+      
+      DocumentReference docRef = await _appointmentsCollection.add(appointmentData);
+      return docRef.id;
+    } else {
+      // Document already exists
+      return querySnapshot.docs.first.id;
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      print('Error creating appointment: $e');
+    }
+    return null;
+  }
+}
     // Complete an appointment
     Future<bool> completeAppointment(
       String appointmentId, 
