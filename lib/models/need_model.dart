@@ -42,28 +42,50 @@ class DailyNeed {
   });
   
   factory DailyNeed.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    
-    return DailyNeed(
-      id: doc.id,
-      seniorId: data['seniorId'] ?? '',
-      assignedToId: data['assignedToId'],
-      title: data['title'] ?? '',
-      description: data['description'] ?? '',
-      type: NeedType.values.firstWhere(
-        (e) => e.toString() == 'NeedType.${data['type']}',
-        orElse: () => NeedType.other,
-      ),
-      status: NeedStatus.values.firstWhere(
-        (e) => e.toString() == 'NeedStatus.${data['status']}',
-        orElse: () => NeedStatus.pending,
-      ),
-      dueDate: (data['dueDate'] as Timestamp).toDate(),
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      isRecurring: data['isRecurring'] ?? false,
-      recurrenceRule: data['recurrenceRule'],
-    );
+  final data = doc.data() as Map<String, dynamic>;
+  return DailyNeed(
+    id: doc.id,
+    title: data['title'] ?? '',
+    description: data['description'] ?? '',
+    dueDate: (data['dueDate'] as Timestamp).toDate(),
+    type: _parseNeedType(data['type'] ?? 'other'),
+    status: _parseNeedStatus(data['status'] ?? 'pending'),
+    seniorId: data['seniorId'] ?? '',
+    assignedToId: data['assignedToId'],
+    isRecurring: data['isRecurring'] ?? false,
+    recurrenceRule: data['recurrenceRule'],
+    createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+  );
+}
+
+static NeedType _parseNeedType(String type) {
+  switch (type) {
+    case 'medication':
+      return NeedType.medication;
+    case 'appointment':
+      return NeedType.appointment;
+    case 'grocery':
+      return NeedType.grocery;
+    case 'other':
+    default:
+      return NeedType.other;
   }
+}
+
+static NeedStatus _parseNeedStatus(String status) {
+  switch (status) {
+    case 'pending':
+      return NeedStatus.pending;
+    case 'inProgress':
+      return NeedStatus.inProgress;
+    case 'completed':
+      return NeedStatus.completed;
+    case 'cancelled':
+      return NeedStatus.cancelled;
+    default:
+      return NeedStatus.pending;
+  }
+}
   
   Map<String, dynamic> toMap() {
     return {

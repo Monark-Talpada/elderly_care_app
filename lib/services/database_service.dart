@@ -21,45 +21,72 @@ class DatabaseService {
   CollectionReference get _seniorsCollection => _firestore.collection('seniors');
   CollectionReference get _familyCollection => _firestore.collection('family_member');
   CollectionReference get _volunteersCollection => _firestore.collection('volunteers');
+
+
+    Stream<List<DailyNeed>> streamSeniorNeeds(String seniorId) {
+    return _needsCollection
+        .where('seniorId', isEqualTo: seniorId)
+        .orderBy('dueDate')
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => DailyNeed.fromFirestore(doc))
+            .toList());
+  }
   
   // Get user-specific needs
-  Future<List<DailyNeed>> getSeniorNeeds(String seniorId) async {
+    // Get needs for a senior (one-time fetch)
+  // Get needs for a senior (one-time fetch)
+Future<List<DailyNeed>> getSeniorNeeds(String seniorId) async {
+  try {
+    // Try the indexed query first
     try {
       final snapshot = await _needsCollection
           .where('seniorId', isEqualTo: seniorId)
           .orderBy('dueDate')
           .get();
+      
+      if (kDebugMode) {
+        print('Fetched ${snapshot.docs.length} needs for senior $seniorId');
+      }
           
       return snapshot.docs
           .map((doc) => DailyNeed.fromFirestore(doc))
           .toList();
     } catch (e) {
-      if (kDebugMode) {
-        print('Error getting senior needs: $e');
+      // If it fails due to missing index, fallback to a non-ordered query
+      if (e.toString().contains('requires an index')) {
+        if (kDebugMode) {
+          print('Index error detected, falling back to unordered query');
+        }
+        
+        // Get the data without ordering
+        final snapshot = await _needsCollection
+            .where('seniorId', isEqualTo: seniorId)
+            .get();
+            
+        // Process and sort the data in memory
+        final needs = snapshot.docs
+            .map((doc) => DailyNeed.fromFirestore(doc))
+            .toList();
+            
+        // Sort in memory
+        needs.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+        
+        return needs;
+      } else {
+        // Re-throw if it's a different error
+        rethrow;
       }
-      return [];
     }
+  } catch (e) {
+    if (kDebugMode) {
+      print('Error getting senior needs: $e');
+    }
+    return [];
   }
-  
-  // Get upcoming needs for notifications
-// Get daily needs for notification
-Stream<List<DailyNeed>> getDailyNeedsForNotification(String seniorId) {
-  final DateTime today = DateTime.now();
-  final DateTime startOfDay = DateTime(today.year, today.month, today.day);
-  final DateTime endOfDay = DateTime(today.year, today.month, today.day, 23, 59, 59);
-  
-  return _needsCollection
-      .where('seniorId', isEqualTo: seniorId)
-      .where('dueDate', isGreaterThanOrEqualTo: startOfDay)
-      .where('dueDate', isLessThanOrEqualTo: endOfDay)
-      .where('status', isNotEqualTo: 'completed')
-      .orderBy('dueDate')
-      .snapshots()
-      .map((snapshot) => snapshot.docs
-          .map((doc) => DailyNeed.fromFirestore(doc))
-          .toList());
 }
 
+  
   // Get needs assigned to a specific user
   Stream<List<DailyNeed>> getAssignedNeeds(String userId) {
     return _needsCollection
@@ -72,9 +99,13 @@ Stream<List<DailyNeed>> getDailyNeedsForNotification(String seniorId) {
   }
   
   // Add a new need
-  Future<String?> addNeed(DailyNeed need) async {
+ Future<String?> addNeed(DailyNeed need) async {
     try {
-      DocumentReference docRef = await _needsCollection.add(need.toMap());
+      final needMap = need.toMap();
+      if (kDebugMode) {
+        print('Adding need with data: $needMap');
+      }
+      DocumentReference docRef = await _needsCollection.add(needMap);
       return docRef.id;
     } catch (e) {
       if (kDebugMode) {
@@ -84,7 +115,6 @@ Stream<List<DailyNeed>> getDailyNeedsForNotification(String seniorId) {
     }
   }
   
-  // Update a need
   Future<bool> updateNeed(DailyNeed need) async {
     try {
       await _needsCollection.doc(need.id).update(need.toMap());
@@ -109,6 +139,7 @@ Stream<List<DailyNeed>> getDailyNeedsForNotification(String seniorId) {
       return false;
     }
   }
+
   
   // Update user location
   Future<bool> updateUserLocation(String userId, GeoPoint location) async {
