@@ -41,6 +41,25 @@ class DatabaseService {
     }
   }
   
+  // Get upcoming needs for notifications
+// Get daily needs for notification
+Stream<List<DailyNeed>> getDailyNeedsForNotification(String seniorId) {
+  final DateTime today = DateTime.now();
+  final DateTime startOfDay = DateTime(today.year, today.month, today.day);
+  final DateTime endOfDay = DateTime(today.year, today.month, today.day, 23, 59, 59);
+  
+  return _needsCollection
+      .where('seniorId', isEqualTo: seniorId)
+      .where('dueDate', isGreaterThanOrEqualTo: startOfDay)
+      .where('dueDate', isLessThanOrEqualTo: endOfDay)
+      .where('status', isNotEqualTo: 'completed')
+      .orderBy('dueDate')
+      .snapshots()
+      .map((snapshot) => snapshot.docs
+          .map((doc) => DailyNeed.fromFirestore(doc))
+          .toList());
+}
+
   // Get needs assigned to a specific user
   Stream<List<DailyNeed>> getAssignedNeeds(String userId) {
     return _needsCollection
