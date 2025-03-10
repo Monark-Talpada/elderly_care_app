@@ -5,6 +5,7 @@ import 'package:elderly_care_app/models/need_model.dart';
 import 'package:elderly_care_app/services/auth_service.dart';
 import 'package:elderly_care_app/services/database_service.dart';
 import 'package:elderly_care_app/utils/navigation_utils.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 
 class SeniorHomeScreen extends StatefulWidget {
@@ -142,6 +143,9 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
               const SizedBox(height: 24),
               _buildEmergencyButton(),
               const SizedBox(height: 24),
+              // Added Daily Notifications Section here
+              const DailyNotificationsSection(),
+              const SizedBox(height: 24),
               _buildDailyNeedsSection(),
               const SizedBox(height: 24),
               _buildQuickActionsSection(),
@@ -230,49 +234,88 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
   }
 
   Widget _buildDailyNeedsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Upcoming Needs',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/senior/daily_needs');
-              },
-              child: const Text('View All'),
-            ),
-          ],
+  // Get the current user ID from Firebase Auth
+  final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+  
+  if (currentUserId == null) {
+    return const Card(
+      child: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Center(
+          child: Text('Not signed in. Please sign in to view needs.'),
         ),
-        const SizedBox(height: 8),
-        _upcomingNeeds.isEmpty
-            ? const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Center(
-                    child: Text(
-                      'No upcoming needs. Tap "View All" to add new needs.',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-              )
-            : ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _upcomingNeeds.length > 3 ? 3 : _upcomingNeeds.length,
-                itemBuilder: (context, index) {
-                  final need = _upcomingNeeds[index];
-                  return _buildNeedCard(need);
-                },
-              ),
-      ],
+      ),
     );
   }
+  
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Daily Needs',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pushNamed(context, '/senior/daily_needs');
+            },
+            child: const Text('View All'),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      StreamBuilder<List<DailyNeed>>(
+        // Use the current user's ID
+        stream: DatabaseService().getDailyNeedsForNotification(currentUserId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          
+          if (snapshot.hasError) {
+            return const Card(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Center(
+                  child: Text('Error loading upcoming needs'),
+                ),
+              ),
+            );
+          }
+          
+          final needs = snapshot.data ?? [];
+          
+          if (needs.isEmpty) {
+            return const Card(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Center(
+                  child: Text(
+                    'No upcoming needs. Tap "View All" to add new needs.',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            );
+          }
+          
+          return ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: needs.length > 3 ? 3 : needs.length,
+            itemBuilder: (context, index) {
+              final need = needs[index];
+              return _buildNeedCard(need);
+            },
+          );
+        },
+      ),
+    ],
+  );
+}
 
   Widget _buildNeedCard(DailyNeed need) {
     final IconData icon;
@@ -437,15 +480,107 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
   }
 
   Future<void> _signOut() async {
-  try {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    await authService.signOut();
-    
-    NavigationUtils.signOut(context);
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error signing out: ${e.toString()}')),
-    );
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.signOut();
+      
+      NavigationUtils.signOut(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error signing out: ${e.toString()}')),
+      );
+    }
   }
 }
+
+// New class for Daily Notifications Section
+class DailyNotificationsSection extends StatelessWidget {
+  const DailyNotificationsSection({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Daily Notifications',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/senior/notifications');
+              },
+              child: const Text('View All'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Card(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: 3, // Show the 3 most recent notifications
+            separatorBuilder: (context, index) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              // Sample notifications - would be replaced with real data
+              final List<Map<String, dynamic>> notifications = [
+                {
+                  'title': 'Medication Reminder',
+                  'message': 'Time to take your blood pressure medication',
+                  'time': '10:00 AM',
+                  'icon': Icons.medication,
+                  'color': Colors.blue
+                },
+                {
+                  'title': 'Family Visit',
+                  'message': 'Sarah is coming to visit at 3:00 PM today',
+                  'time': '11:30 AM',
+                  'icon': Icons.people,
+                  'color': Colors.green
+                },
+                {
+                  'title': 'Doctor Appointment',
+                  'message': 'Checkup with Dr. Johnson tomorrow at 2:30 PM',
+                  'time': 'Yesterday',
+                  'icon': Icons.calendar_today,
+                  'color': Colors.purple
+                },
+              ];
+              
+              final notification = notifications[index];
+              
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: notification['color'].withOpacity(0.2),
+                  child: Icon(notification['icon'], color: notification['color']),
+                ),
+                title: Text(notification['title']),
+                subtitle: Text(notification['message']),
+                trailing: Text(
+                  notification['time'],
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 12,
+                  ),
+                ),
+                onTap: () {
+                  // Navigate to notification details
+                  // This would be implemented to show more details or mark as read
+                  Navigator.pushNamed(
+                    context,
+                    '/senior/notification_details',
+                    arguments: notification,
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
 }
