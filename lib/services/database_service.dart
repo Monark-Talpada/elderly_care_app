@@ -263,6 +263,28 @@ Future<List<DailyNeed>> getSeniorNeeds(String seniorId) async {
     }
   }
   
+// Add this method to your DatabaseService class
+
+Future<void> updateVolunteer(Volunteer volunteer) async {
+  try {
+    // Update the basic user info
+    await _firestore.collection('users').doc(volunteer.id).update({
+      'name': volunteer.name,
+      'phoneNumber': volunteer.phoneNumber,
+    });
+    
+    // Update volunteer-specific info
+    await _firestore.collection('volunteers').doc(volunteer.id).update({
+      'bio': volunteer.bio,
+      'skills': volunteer.skills,
+      'servingAreas': volunteer.servingAreas,
+      'experienceYears': volunteer.experienceYears,
+    });
+  } catch (e) {
+    rethrow; // Rethrow to handle in the UI
+  }
+}
+
   // Volunteer methods
   Future<Volunteer?> getVolunteer(String volunteerId) async {
     try {

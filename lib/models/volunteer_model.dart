@@ -124,6 +124,8 @@ class Volunteer extends User {
     List<String>? skills,
     bool? isVerified,
     String? bio,
+    String? name,
+    String? phoneNumber,
     Map<String, List<TimeSlot>>? availability,
     int? totalHoursVolunteered,
     List<String>? servingAreas,
@@ -134,7 +136,7 @@ class Volunteer extends User {
     return Volunteer(
       id: id,
       email: email,
-      name: name,
+      name: name ?? this.name,
       photoUrl: photoUrl,
       phoneNumber: phoneNumber,
       createdAt: createdAt,

@@ -424,9 +424,10 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                 icon: Icons.person,
                 color: Colors.blue,
                 onTap: () {
-                  // Navigate to profile edit screen
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Profile update coming soon')),
+                  Navigator.pushNamed(
+                    context,
+                    '/volunteer_profile',
+                    arguments: volunteer,
                   );
                 },
               ),

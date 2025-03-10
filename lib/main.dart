@@ -5,6 +5,7 @@ import 'package:elderly_care_app/screens/auth/user_type_selection.dart';
 import 'package:elderly_care_app/screens/family/family_home.dart';
 import 'package:elderly_care_app/screens/senior/senior_home.dart';
 import 'package:elderly_care_app/screens/volunteer/volunteer_home.dart';
+import 'screens/volunteer/volunteer_profile_screen.dart';
 
 // New screen imports
 import 'package:elderly_care_app/screens/family/connect_senior.dart';
@@ -108,6 +109,9 @@ class MyApp extends StatelessWidget {
         final args = ModalRoute.of(context)!.settings.arguments as Volunteer;
         return VolunteerHomeScreen(volunteerId: args.id);
       },
+      '/volunteer_profile': (context) => VolunteerProfileScreen(
+  volunteer: ModalRoute.of(context)!.settings.arguments as Volunteer,
+),
       
       // Emergency and additional screens
       '/emergency_button': (context) => const EmergencyButtonScreen(),
