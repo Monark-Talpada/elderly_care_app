@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "D:/elderly_care_app/linux"
+    "cmake.sourceDirectory": "D:/elderly_care_app/linux",
+    "cmake.ignoreCMakeListsMissing": true
 }

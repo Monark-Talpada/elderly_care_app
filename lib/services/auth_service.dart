@@ -5,6 +5,7 @@ import 'package:elderly_care_app/models/volunteer_model.dart';
 import 'package:elderly_care_app/models/user_model.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService extends ChangeNotifier {
   final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
@@ -17,6 +18,26 @@ class AuthService extends ChangeNotifier {
   
   AuthService() {
     _auth.authStateChanges().listen(_onAuthStateChanged);
+    _checkSavedLogin(); // Check for saved login on initialization
+  }
+  
+  // New method to check for saved login credentials
+  Future<void> _checkSavedLogin() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
+      
+      if (isLoggedIn) {
+        final firebaseUser = _auth.currentUser;
+        if (firebaseUser != null) {
+          await _fetchUserData(firebaseUser);
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error checking saved login: $e');
+      }
+    }
   }
   
   Future<void> _onAuthStateChanged(firebase_auth.User? firebaseUser) async {
@@ -89,6 +110,11 @@ class AuthService extends ChangeNotifier {
       }
       
       notifyListeners();
+      
+      // Save login state to SharedPreferences
+      if (_currentUser != null) {
+        _saveLoginState(firebaseUser.uid, firebaseUser.email ?? '');
+      }
     } catch (e) {
       if (kDebugMode) {
         print('Error fetching user data: $e');
@@ -98,108 +124,132 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  // New method to save login state
+  Future<void> _saveLoginState(String userId, String email) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_logged_in', true);
+      await prefs.setString('user_id', userId);
+      await prefs.setString('user_email', email);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error saving login state: $e');
+      }
+    }
+  }
+
   Future<void> _fetchUserData(firebase_auth.User firebaseUser) async {
-  try {
-    DocumentSnapshot userDoc = await _firestore
-        .collection('users')
-        .doc(firebaseUser.uid)
-        .get();
+    try {
+      DocumentSnapshot userDoc = await _firestore
+          .collection('users')
+          .doc(firebaseUser.uid)
+          .get();
     
-    if (userDoc.exists) {
-      Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
-      String userType = data['userType'] ?? '';
-      
-      if (userType == 'senior') {
-        // Get additional data from seniors collection if needed
-        DocumentSnapshot seniorDoc = await _firestore
-            .collection('seniors')
-            .doc(firebaseUser.uid)
-            .get();
-            
-        if (seniorDoc.exists) {
-          // Merge data from both documents if needed
-          Map<String, dynamic> seniorData = seniorDoc.data() as Map<String, dynamic>;
-          Map<String, dynamic> mergedData = {...data, ...seniorData};
-          _currentUser = SeniorCitizen.fromMap(mergedData, userDoc.id);
+      if (userDoc.exists) {
+        Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
+        String userType = data['userType'] ?? '';
+        
+        if (userType == 'senior') {
+          // Get additional data from seniors collection if needed
+          DocumentSnapshot seniorDoc = await _firestore
+              .collection('seniors')
+              .doc(firebaseUser.uid)
+              .get();
+              
+          if (seniorDoc.exists) {
+            // Merge data from both documents if needed
+            Map<String, dynamic> seniorData = seniorDoc.data() as Map<String, dynamic>;
+            Map<String, dynamic> mergedData = {...data, ...seniorData};
+            _currentUser = SeniorCitizen.fromMap(mergedData, userDoc.id);
+          } else {
+            _currentUser = SeniorCitizen.fromFirestore(userDoc);
+          }
+        } else if (userType == 'family') {
+          // Get additional data from family_member collection if needed
+          DocumentSnapshot familyDoc = await _firestore
+              .collection('family_member')
+              .doc(firebaseUser.uid)
+              .get();
+              
+          if (familyDoc.exists) {
+            // Merge data from both documents if needed
+            Map<String, dynamic> familyData = familyDoc.data() as Map<String, dynamic>;
+            Map<String, dynamic> mergedData = {...data, ...familyData};
+            _currentUser = FamilyMember.fromMap(mergedData, userDoc.id);
+          } else {
+            _currentUser = FamilyMember.fromFirestore(userDoc);
+          }
+        } else if (userType == 'volunteer') {
+          // Get additional data from volunteers collection if needed
+          DocumentSnapshot volunteerDoc = await _firestore
+              .collection('volunteers')
+              .doc(firebaseUser.uid)
+              .get();
+              
+          if (volunteerDoc.exists) {
+            // Merge data from both documents if needed
+            Map<String, dynamic> volunteerData = volunteerDoc.data() as Map<String, dynamic>;
+            Map<String, dynamic> mergedData = {...data, ...volunteerData};
+            _currentUser = Volunteer.fromMap(mergedData, userDoc.id);
+          } else {
+            _currentUser = Volunteer.fromFirestore(userDoc);
+          }
         } else {
-          _currentUser = SeniorCitizen.fromFirestore(userDoc);
-        }
-      } else if (userType == 'family') {
-        // Get additional data from family_member collection if needed
-        DocumentSnapshot familyDoc = await _firestore
-            .collection('family_member')
-            .doc(firebaseUser.uid)
-            .get();
-            
-        if (familyDoc.exists) {
-          // Merge data from both documents if needed
-          Map<String, dynamic> familyData = familyDoc.data() as Map<String, dynamic>;
-          Map<String, dynamic> mergedData = {...data, ...familyData};
-          _currentUser = FamilyMember.fromMap(mergedData, userDoc.id);
-        } else {
-          _currentUser = FamilyMember.fromFirestore(userDoc);
-        }
-      } else if (userType == 'volunteer') {
-        // Get additional data from volunteers collection if needed
-        DocumentSnapshot volunteerDoc = await _firestore
-            .collection('volunteers')
-            .doc(firebaseUser.uid)
-            .get();
-            
-        if (volunteerDoc.exists) {
-          // Merge data from both documents if needed
-          Map<String, dynamic> volunteerData = volunteerDoc.data() as Map<String, dynamic>;
-          Map<String, dynamic> mergedData = {...data, ...volunteerData};
-          _currentUser = Volunteer.fromMap(mergedData, userDoc.id);
-        } else {
-          _currentUser = Volunteer.fromFirestore(userDoc);
+          _currentUser = User.fromFirestore(userDoc);
         }
       } else {
-        _currentUser = User.fromFirestore(userDoc);
+        _currentUser = null;
       }
-    } else {
+      
+      notifyListeners();
+      
+      // Save login state when fetching user data
+      if (_currentUser != null) {
+        _saveLoginState(firebaseUser.uid, firebaseUser.email ?? '');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching user data: $e');
+      }
       _currentUser = null;
+      notifyListeners();
     }
-    
-    notifyListeners();
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error fetching user data: $e');
-    }
-    _currentUser = null;
-    notifyListeners();
   }
-}
   
   Future<User?> signIn(String email, String password) async {
-  try {
-    // Clear current user state first
-    _currentUser = null;
-    
-    // Sign in with Firebase Auth
-    final userCredential = await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-    
-    // Get the Firebase user
-    final firebaseUser = userCredential.user;
-    if (firebaseUser == null) {
+    try {
+      // Clear current user state first
+      _currentUser = null;
+      
+      // Sign in with Firebase Auth
+      final userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      
+      // Get the Firebase user
+      final firebaseUser = userCredential.user;
+      if (firebaseUser == null) {
+        return null;
+      }
+      
+      // Manually fetch user data rather than waiting for the listener
+      await _fetchUserData(firebaseUser);
+      
+      // Save login state after successful sign in
+      if (_currentUser != null) {
+        await _saveLoginState(firebaseUser.uid, email);
+      }
+      
+      // Return the now-populated _currentUser
+      return _currentUser;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Sign in error: $e');
+      }
       return null;
     }
-    
-    // Manually fetch user data rather than waiting for the listener
-    await _fetchUserData(firebaseUser);
-    
-    // Return the now-populated _currentUser
-    return _currentUser;
-  } catch (e) {
-    if (kDebugMode) {
-      print('Sign in error: $e');
-    }
-    return null;
   }
-}
   
   Future<User?> register({
     required String email,
@@ -237,29 +287,45 @@ class AuthService extends ChangeNotifier {
         _currentUser = userData;
         notifyListeners();
         
+        // Save login state after registration
+        await _saveLoginState(firebaseUser.uid, email);
+        
         return userData;
       }
       
       return null;
     } catch (e) {
       if (e is firebase_auth.FirebaseAuthException && e.code == 'email-already-in-use') {
-      // Display user-friendly message
-      if (kDebugMode) {
-        print('Email already in use. Please use a different email or sign in.');
-      }
-    }else{
-      if (kDebugMode) {
-        print('Registration error: $e');
+        // Display user-friendly message
+        if (kDebugMode) {
+          print('Email already in use. Please use a different email or sign in.');
+        }
+      } else {
+        if (kDebugMode) {
+          print('Registration error: $e');
+        }
       }
       return null;
-    }
     }
   }
   
   Future<void> signOut() async {
-    await _auth.signOut();
-    _currentUser = null;
-    notifyListeners();
+    try {
+      await _auth.signOut();
+      _currentUser = null;
+      
+      // Clear login state from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_logged_in', false);
+      await prefs.remove('user_id');
+      await prefs.remove('user_email');
+      
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error signing out: $e');
+      }
+    }
   }
 
   Future<SeniorCitizen?> createSeniorProfile(String userId) async {
@@ -301,18 +367,17 @@ class AuthService extends ChangeNotifier {
       
       return null;
     } catch (e) {
-    if (e is FirebaseException && e.code == 'permission-denied') {
-      if (kDebugMode) {
-        print('Permission denied: Please check Firebase security rules');
+      if (e is FirebaseException && e.code == 'permission-denied') {
+        if (kDebugMode) {
+          print('Permission denied: Please check Firebase security rules');
+        }
+      } else {
+        if (kDebugMode) {
+          print('Error creating senior profile: $e');
+        }
       }
-    } else {
-      if (kDebugMode) {
-        print('Error creating senior profile: $e');
-      }
+      return null;
     }
-    return null;
-  }
-
   }
 
   Future<FamilyMember?> createFamilyProfile(String userId) async {
@@ -352,34 +417,32 @@ class AuthService extends ChangeNotifier {
       
       return null;
     } catch (e) {
-    if (e is FirebaseException && e.code == 'permission-denied') {
-      if (kDebugMode) {
-        print('Permission denied: Please check Firebase security rules');
+      if (e is FirebaseException && e.code == 'permission-denied') {
+        if (kDebugMode) {
+          print('Permission denied: Please check Firebase security rules');
+        }
+      } else {
+        if (kDebugMode) {
+          print('Error creating senior profile: $e');
+        }
       }
-    } else {
-      if (kDebugMode) {
-        print('Error creating senior profile: $e');
-      }
+      return null;
     }
-    return null;
-  }
-
   }
 
   Future<Volunteer?> createVolunteerProfile(String userId) async {
     try {
-
       DocumentSnapshot userDoc = await _firestore.collection('users').doc(userId).get();
-    if (!userDoc.exists) {
-      if (kDebugMode) {
-        print('User document does not exist. Creating user first...');
+      if (!userDoc.exists) {
+        if (kDebugMode) {
+          print('User document does not exist. Creating user first...');
+        }
+        // Create a basic user document if it doesn't exist
+        await _firestore.collection('users').doc(userId).set({
+          'userType': 'volunteer',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
       }
-      // Create a basic user document if it doesn't exist
-      await _firestore.collection('users').doc(userId).set({
-        'userType': 'volunteer',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-    }
       
       // Update the user type in users collection
       await _firestore.collection('users').doc(userId).update({
@@ -394,6 +457,10 @@ class AuthService extends ChangeNotifier {
       });
       
       // Fetch the updated user data
+      userDoc = await _firestore
+          .collection('users')
+          .doc(userId)
+          .get();
     
       DocumentSnapshot volunteerDoc = await _firestore
           .collection('volunteers')
@@ -413,18 +480,17 @@ class AuthService extends ChangeNotifier {
       
       return null;
     } catch (e) {
-    if (e is FirebaseException && e.code == 'permission-denied') {
-      if (kDebugMode) {
-        print('Permission denied: Please check Firebase security rules');
+      if (e is FirebaseException && e.code == 'permission-denied') {
+        if (kDebugMode) {
+          print('Permission denied: Please check Firebase security rules');
+        }
+      } else {
+        if (kDebugMode) {
+          print('Error creating senior profile: $e');
+        }
       }
-    } else {
-      if (kDebugMode) {
-        print('Error creating senior profile: $e');
-      }
+      return null;
     }
-    return null;
-  }
-
   }
   
   Future<bool> connectSeniorWithEmail(String seniorEmail) async {
@@ -470,25 +536,48 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<bool> handleRoleSelection(UserType userType, String userId) async {
-  try {
-    switch (userType) {
-      case UserType.senior:
-        final senior = await createSeniorProfile(userId);
-        return senior != null;
-      case UserType.family:
-        final family = await createFamilyProfile(userId);
-        return family != null;
-      case UserType.volunteer:
-        final volunteer = await createVolunteerProfile(userId);
-        return volunteer != null;
-      default:
-        return false;
+    try {
+      switch (userType) {
+        case UserType.senior:
+          final senior = await createSeniorProfile(userId);
+          return senior != null;
+        case UserType.family:
+          final family = await createFamilyProfile(userId);
+          return family != null;
+        case UserType.volunteer:
+          final volunteer = await createVolunteerProfile(userId);
+          return volunteer != null;
+        default:
+          return false;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error selecting role: $e');
+      }
+      return false;
     }
-  } catch (e) {
-    if (kDebugMode) {
-      print('Error selecting role: $e');
-    }
-    return false;
   }
-}
+  
+  // New method to initialize auth state on app start
+  Future<void> initializeAuth() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
+      
+      if (isLoggedIn) {
+        final firebaseUser = _auth.currentUser;
+        if (firebaseUser != null) {
+          await _fetchUserData(firebaseUser);
+        } else {
+          // User data in SharedPreferences but not in Firebase Auth
+          // Clear invalid login state
+          await prefs.setBool('is_logged_in', false);
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error initializing auth: $e');
+      }
+    }
+  }
 }

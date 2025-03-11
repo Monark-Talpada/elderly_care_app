@@ -11,7 +11,7 @@ import 'screens/volunteer/volunteer_profile_screen.dart';
 import 'package:elderly_care_app/screens/family/connect_senior.dart';
 import 'package:elderly_care_app/screens/family/senior_profile.dart';
 import 'package:elderly_care_app/screens/family/emergency_map.dart';
-
+import 'package:elderly_care_app/screens/auth/splash_screen.dart';
 // Needs-related imports
 import 'package:elderly_care_app/screens/senior/daily_needs.dart';
 import 'package:elderly_care_app/screens/senior/add_need.dart';
@@ -93,7 +93,7 @@ class MyApp extends StatelessWidget {
       ),
       // Updated routes to include new screens
         routes: {
-      '/': (context) => const LoginScreen(),
+      '/': (context) => const SplashScreen(),
       '/login': (context) => const LoginScreen(),
       '/register': (context) => const RegisterScreen(),
       '/user_type_selection': (context) {
