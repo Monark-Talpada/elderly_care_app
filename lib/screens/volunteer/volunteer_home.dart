@@ -43,13 +43,11 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         final appointments = await _databaseService.getVolunteerAppointments(volunteer.id);
         
         setState(() {
-          _upcomingAppointments = appointments
-              .where((appt) => 
-                  (appt.status == AppointmentStatus.scheduled || 
-                   appt.status == AppointmentStatus.inProgress) &&
-                  appt.startTime.isAfter(DateTime.now()))
-              .take(3)
-              .toList();
+         _upcomingAppointments = appointments
+            .where((appt) => 
+                appt.status == AppointmentStatus.scheduled || 
+                appt.status == AppointmentStatus.inProgress)
+            .toList();
         });
       }
     } catch (e) {
@@ -64,15 +62,15 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
   }
 
   Future<void> _signOut() async {
-  try {
-    await _authService.signOut();
-    NavigationUtils.signOut(context);
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error signing out: $e')),
-    );
+    try {
+      await _authService.signOut();
+      NavigationUtils.signOut(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error signing out: $e')),
+      );
+    }
   }
-}
   
   @override
   Widget build(BuildContext context) {
@@ -102,6 +100,21 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
           appBar: AppBar(
             title: const Text('Volunteer Dashboard'),
             actions: [
+              // Add profile icon in the app bar
+              IconButton(
+                icon: const CircleAvatar(
+                  radius: 14,
+                  child: Icon(Icons.person, size: 16),
+                ),
+                onPressed: () {
+                  Navigator.pushNamed(
+                    context,
+                    '/volunteer_profile',
+                    arguments: volunteer,
+                  );
+                },
+                tooltip: 'Update Profile',
+              ),
               IconButton(
                 icon: const Icon(Icons.exit_to_app),
                 onPressed: _signOut,
@@ -409,39 +422,6 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                     MaterialPageRoute(
                       builder: (context) => AppointmentsScreen(volunteer: volunteer),
                     ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildActionCard(
-                title: 'Update Profile',
-                icon: Icons.person,
-                color: Colors.blue,
-                onTap: () {
-                  Navigator.pushNamed(
-                    context,
-                    '/volunteer_profile',
-                    arguments: volunteer,
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildActionCard(
-                title: 'Update Skills',
-                icon: Icons.psychology,
-                color: Colors.amber,
-                onTap: () {
-                  // Navigate to skills update screen
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Skills update coming soon')),
                   );
                 },
               ),
