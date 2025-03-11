@@ -249,7 +249,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                             AppointmentStatus.completed
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
+                            backgroundColor: const Color.fromARGB(255, 249, 249, 249),
                           ),
                           child: const Text('Complete'),
                         ),
