@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:elderly_care_app/models/senior_model.dart';
 import 'package:elderly_care_app/models/need_model.dart';
+import 'package:elderly_care_app/models/family_model.dart';
 import 'package:elderly_care_app/services/auth_service.dart';
 import 'package:elderly_care_app/services/database_service.dart';
 import 'package:elderly_care_app/utils/navigation_utils.dart';
@@ -20,6 +21,7 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
   bool _isLoading = true;
   SeniorCitizen? _senior;
   List<DailyNeed> _upcomingNeeds = [];
+  List<FamilyMember> _connectedFamilyMembers = []; 
 
   @override
   void initState() {
@@ -62,6 +64,8 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
         final upcomingNeeds = needs.where((need) => 
             need.status != NeedStatus.completed && 
             need.status != NeedStatus.cancelled).toList();
+
+        final familyMembers = await _databaseService.getConnectedFamilyMembers(senior.id);
         
         if (mounted) {
           setState(() {
@@ -398,50 +402,199 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
   }
 
   Widget _buildQuickActionsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Quick Actions',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 16),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        'Quick Actions',
+        style: Theme.of(context).textTheme.titleLarge,
+      ),
+      const SizedBox(height: 16),
+      GridView.count(
+        crossAxisCount: 2,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        children: [
+          _buildActionCard(
+            'Add Need',
+            Icons.add_task,
+            Colors.green,
+            () => Navigator.pushNamed(context, '/senior/add_need'),
+          ),
+          _buildActionCard(
+            'Book Volunteer',
+            Icons.people,
+            Colors.blue,
+            () => Navigator.pushNamed(context, '/senior/select_volunteer'),
+          ),
+          _buildFamilyMembersCard(),
+          _buildActionCard(
+            'Emergency Contacts',
+            Icons.emergency,
+            Colors.red,
+            () => Navigator.pushNamed(context, '/senior/emergency_contacts'),
+          ),
+        ],
+      ),
+      const SizedBox(height: 24),
+      if (_connectedFamilyMembers.isNotEmpty) _buildFamilyMembersSection(),
+    ],
+  );
+}
+
+Widget _buildFamilyMembersCard() {
+  return Card(
+    elevation: 4,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    child: InkWell(
+      onTap: () => Navigator.pushNamed(context, '/senior/family_connections'),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildActionCard(
-              'Add Need',
-              Icons.add_task,
-              Colors.green,
-              () => Navigator.pushNamed(context, '/senior/add_need'),
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(
+                  Icons.family_restroom,
+                  size: 48,
+                  color: Colors.purple,
+                ),
+                if (_connectedFamilyMembers.isNotEmpty)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        _connectedFamilyMembers.length.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            _buildActionCard(
-              'Book Volunteer',
-              Icons.people,
-              Colors.blue,
-              () => Navigator.pushNamed(context, '/senior/select_volunteer'),
-            ),
-            _buildActionCard(
+            const SizedBox(height: 8),
+            Text(
               'Family Members',
-              Icons.family_restroom,
-              Colors.purple,
-              () => Navigator.pushNamed(context, '/senior/family_connections'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            _buildActionCard(
-              'Emergency Contacts',
-              Icons.emergency,
-              Colors.red,
-              () => Navigator.pushNamed(context, '/senior/emergency_contacts'),
+            Text(
+              '${_connectedFamilyMembers.length} connected',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
             ),
           ],
         ),
-      ],
-    );
-  }
+      ),
+    ),
+  );
+}
+
+Widget _buildFamilyMembersSection() {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Connected Family',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pushNamed(context, '/senior/family_connections').then((_) {
+                // Refresh data when returning from family connections screen
+                _loadSeniorData();
+              });
+            },
+            child: const Text('View All'),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      SizedBox(
+        height: 110,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: _connectedFamilyMembers.length > 5 ? 5 : _connectedFamilyMembers.length,
+          itemBuilder: (context, index) {
+            final member = _connectedFamilyMembers[index];
+            return _buildFamilyMemberCard(member);
+          },
+        ),
+      ),
+    ],
+  );
+}
+
+Widget _buildFamilyMemberCard(FamilyMember member) {
+  return Card(
+    margin: const EdgeInsets.only(right: 12),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    child: InkWell(
+      onTap: () {
+        // Navigate to family member details
+        // You might want to create this route
+        // Navigator.pushNamed(context, '/senior/family_member_details', arguments: member);
+      },
+      child: Container(
+        width: 100,
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundImage: member.photoUrl != null 
+                  ? NetworkImage(member.photoUrl!)
+                  : null,
+              child: member.photoUrl == null
+                  ? Text(member.name.substring(0, 1).toUpperCase(),
+                      style: const TextStyle(fontSize: 18))
+                  : null,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              member.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+            if (member.relationship != null) 
+              Text(
+                member.relationship!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 
   Widget _buildActionCard(String title, IconData icon, Color color, VoidCallback onTap) {
     return Card(
