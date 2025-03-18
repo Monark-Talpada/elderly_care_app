@@ -1,1 +1,40 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"elderlycareapp-35250","appId":"1:1001240832274:android:2e18d0abcac974dd35ebcb","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"elderlycareapp-35250","configurations":{"android":"1:1001240832274:android:2e18d0abcac974dd35ebcb","ios":"1:1001240832274:ios:baaa3e0455214a6335ebcb","web":"1:1001240832274:web:4f01f16828a9a6fb35ebcb","windows":"1:1001240832274:web:d916d6a6dbc3d90b35ebcb"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "elderlycareapp-35250",
+          "appId": "1:1001240832274:android:2e18d0abcac974dd35ebcb",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "elderlycareapp-35250",
+          "configurations": {
+            "android": "1:1001240832274:android:2e18d0abcac974dd35ebcb",
+            "ios": "1:1001240832274:ios:baaa3e0455214a6335ebcb",
+            "web": "1:1001240832274:web:4f01f16828a9a6fb35ebcb",
+            "windows": "1:1001240832274:web:d916d6a6dbc3d90b35ebcb"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint"
+      ]
+    }
+  ]
+}
