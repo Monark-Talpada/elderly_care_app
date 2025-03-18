@@ -13,15 +13,8 @@ import firebase_messaging
 import firebase_storage
 import flutter_local_notifications
 import geolocator_apple
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
+import location
 import path_provider_foundation
-=======
-import location
->>>>>>> Stashed changes
-=======
-import location
->>>>>>> Stashed changes
 import shared_preferences_foundation
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
@@ -33,14 +26,7 @@ func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   FLTFirebaseStoragePlugin.register(with: registry.registrar(forPlugin: "FLTFirebaseStoragePlugin"))
   FlutterLocalNotificationsPlugin.register(with: registry.registrar(forPlugin: "FlutterLocalNotificationsPlugin"))
   GeolocatorPlugin.register(with: registry.registrar(forPlugin: "GeolocatorPlugin"))
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
+  LocationPlugin.register(with: registry.registrar(forPlugin: "LocationPlugin"))
   PathProviderPlugin.register(with: registry.registrar(forPlugin: "PathProviderPlugin"))
-=======
-  LocationPlugin.register(with: registry.registrar(forPlugin: "LocationPlugin"))
->>>>>>> Stashed changes
-=======
-  LocationPlugin.register(with: registry.registrar(forPlugin: "LocationPlugin"))
->>>>>>> Stashed changes
   SharedPreferencesPlugin.register(with: registry.registrar(forPlugin: "SharedPreferencesPlugin"))
 }
