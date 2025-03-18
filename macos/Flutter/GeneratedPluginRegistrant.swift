@@ -14,7 +14,11 @@ import firebase_storage
 import flutter_local_notifications
 import geolocator_apple
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 import path_provider_foundation
+=======
+import location
+>>>>>>> Stashed changes
 =======
 import location
 >>>>>>> Stashed changes
@@ -30,7 +34,11 @@ func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   FlutterLocalNotificationsPlugin.register(with: registry.registrar(forPlugin: "FlutterLocalNotificationsPlugin"))
   GeolocatorPlugin.register(with: registry.registrar(forPlugin: "GeolocatorPlugin"))
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   PathProviderPlugin.register(with: registry.registrar(forPlugin: "PathProviderPlugin"))
+=======
+  LocationPlugin.register(with: registry.registrar(forPlugin: "LocationPlugin"))
+>>>>>>> Stashed changes
 =======
   LocationPlugin.register(with: registry.registrar(forPlugin: "LocationPlugin"))
 >>>>>>> Stashed changes
