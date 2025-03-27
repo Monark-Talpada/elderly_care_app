@@ -7,6 +7,9 @@ import 'package:elderly_care_app/screens/senior/senior_home.dart';
 import 'package:elderly_care_app/screens/senior/family_connection.dart';
 import 'package:elderly_care_app/screens/volunteer/volunteer_home.dart';
 import 'screens/volunteer/volunteer_profile_screen.dart';
+import 'package:elderly_care_app/screens/senior/emergency_contacts.dart';
+import 'package:elderly_care_app/models/emergency_model.dart';
+
 
 // New screen imports
 import 'package:elderly_care_app/screens/family/connect_senior.dart';
@@ -146,6 +149,8 @@ class MyApp extends StatelessWidget {
       '/senior/select_volunteer': (context) => const SelectVolunteerScreen(),
 
       '/senior/family_connections': (context) => const FamilyConnectionsScreen(),
+
+     '/senior/emergency_contacts': (context) => const EmergencyContactsScreen(),
 
       // Volunteer-related routes
       '/volunteer/appointments': (context) {
