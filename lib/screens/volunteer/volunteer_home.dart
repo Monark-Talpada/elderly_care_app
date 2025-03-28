@@ -30,6 +30,45 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     super.initState();
     _loadData();
   }
+
+  Widget _buildStatusChip(AppointmentStatus status) {
+    Color chipColor;
+    String chipText;
+
+    switch (status) {
+      case AppointmentStatus.scheduled:
+        chipColor = Colors.blue.shade100;
+        chipText = 'Scheduled';
+        break;
+      case AppointmentStatus.inProgress:
+        chipColor = Colors.orange.shade100;
+        chipText = 'In Progress';
+        break;
+      case AppointmentStatus.completed:
+        chipColor = Colors.green.shade100;
+        chipText = 'Completed';
+        break;
+      case AppointmentStatus.cancelled:
+        chipColor = Colors.red.shade100;
+        chipText = 'Cancelled';
+        break;
+      default:
+        chipColor = Colors.grey.shade100;
+        chipText = 'Unknown';
+    }
+
+    return Chip(
+      label: Text(
+        chipText, 
+        style: const TextStyle(
+          color: Colors.black87,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      backgroundColor: chipColor,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    );
+  }
   
   Future<void> _loadData() async {
     setState(() {
@@ -98,14 +137,22 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         
         return LayoutBuilder(
           builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 600;
+            final isWide = constraints.maxWidth >= 1200;
+
             return Scaffold(
               appBar: AppBar(
-                title: const Text('Volunteer Dashboard'),
+                title: Text(
+                  'Volunteer Dashboard', 
+                  style: TextStyle(
+                    fontSize: isNarrow ? 18 : 22,
+                  ),
+                ),
                 actions: [
                   IconButton(
-                    icon: const CircleAvatar(
-                      radius: 14,
-                      child: Icon(Icons.person, size: 16),
+                    icon: CircleAvatar(
+                      radius: isNarrow ? 12 : 14,
+                      child: Icon(Icons.person, size: isNarrow ? 14 : 16),
                     ),
                     onPressed: () {
                       Navigator.pushNamed(
@@ -122,26 +169,28 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                   ),
                 ],
               ),
-              body: RefreshIndicator(
-                onRefresh: _loadData,
-                child: CustomScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
-                    SliverPadding(
-                      padding: const EdgeInsets.all(16.0),
-                      sliver: SliverList(
-                        delegate: SliverChildListDelegate([
-                          _buildVolunteerHeader(volunteer),
-                          SizedBox(height: constraints.maxHeight * 0.03),
-                          _buildUpcomingAppointmentsSection(constraints),
-                          SizedBox(height: constraints.maxHeight * 0.03),
-                          _buildStatisticsSection(volunteer, constraints),
-                          SizedBox(height: constraints.maxHeight * 0.03),
-                          _buildActionCards(volunteer, constraints),
-                        ]),
+              body: SafeArea(
+                child: RefreshIndicator(
+                  onRefresh: _loadData,
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      SliverPadding(
+                        padding: EdgeInsets.all(isNarrow ? 8.0 : 16.0),
+                        sliver: SliverList(
+                          delegate: SliverChildListDelegate([
+                            _buildVolunteerHeader(volunteer, isNarrow),
+                            SizedBox(height: constraints.maxHeight * 0.02),
+                            _buildUpcomingAppointmentsSection(constraints, isNarrow),
+                            SizedBox(height: constraints.maxHeight * 0.02),
+                            _buildStatisticsSection(volunteer, constraints, isNarrow),
+                            SizedBox(height: constraints.maxHeight * 0.02),
+                            _buildActionCards(volunteer, constraints, isNarrow),
+                          ]),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             );
@@ -151,22 +200,22 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     );
   }
   
-  Widget _buildVolunteerHeader(Volunteer volunteer) {
+  Widget _buildVolunteerHeader(Volunteer volunteer, bool isNarrow) {
     return LayoutBuilder(
       builder: (context, constraints) {
         return Card(
           elevation: 4,
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(isNarrow ? 8.0 : 16.0),
             child: Row(
               children: [
                 CircleAvatar(
-                  radius: constraints.maxWidth * 0.1,
+                  radius: isNarrow ? constraints.maxWidth * 0.08 : constraints.maxWidth * 0.1,
                   backgroundImage: volunteer.photoUrl != null 
                       ? NetworkImage(volunteer.photoUrl!)
                       : null,
                   child: volunteer.photoUrl == null
-                      ? const Icon(Icons.person, size: 40)
+                      ? Icon(Icons.person, size: isNarrow ? 30 : 40)
                       : null,
                 ),
                 SizedBox(width: constraints.maxWidth * 0.04),
@@ -178,8 +227,8 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                         fit: BoxFit.scaleDown,
                         child: Text(
                           volunteer.name,
-                          style: const TextStyle(
-                            fontSize: 24,
+                          style: TextStyle(
+                            fontSize: isNarrow ? 20 : 24,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -190,7 +239,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                           Icon(
                             Icons.verified,
                             color: volunteer.isVerified ? Colors.green : Colors.grey,
-                            size: 20,
+                            size: isNarrow ? 16 : 20,
                           ),
                           const SizedBox(width: 4),
                           Expanded(
@@ -198,6 +247,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                               volunteer.isVerified ? 'Verified Volunteer' : 'Pending Verification',
                               style: TextStyle(
                                 color: volunteer.isVerified ? Colors.green : Colors.grey,
+                                fontSize: isNarrow ? 12 : 14,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -208,13 +258,14 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            const Icon(Icons.star, color: Colors.amber, size: 20),
+                            Icon(Icons.star, color: Colors.amber, size: isNarrow ? 16 : 20),
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
                                 '${volunteer.rating!.toStringAsFixed(1)} (${volunteer.ratingCount ?? 0} reviews)',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.black54,
+                                  fontSize: isNarrow ? 12 : 14,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -233,17 +284,17 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     );
   }
   
-  Widget _buildUpcomingAppointmentsSection(BoxConstraints constraints) {
+  Widget _buildUpcomingAppointmentsSection(BoxConstraints constraints, bool isNarrow) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Upcoming Appointments',
               style: TextStyle(
-                fontSize: 20,
+                fontSize: isNarrow ? 18 : 20,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -267,13 +318,13 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         if (_isLoading)
           const Center(child: CircularProgressIndicator())
         else if (_upcomingAppointments.isEmpty)
-          const Card(
+          Card(
             child: Padding(
-              padding: EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(16.0),
               child: Center(
                 child: Text(
                   'No upcoming appointments',
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(fontSize: isNarrow ? 14 : 16),
                 ),
               ),
             ),
@@ -308,42 +359,14 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     );
   }
   
-  Widget _buildStatusChip(AppointmentStatus status) {
-    Color color;
-    String label = status.toString().split('.').last;
-    
-    switch (status) {
-      case AppointmentStatus.scheduled:
-        color = Colors.blue;
-        break;
-      case AppointmentStatus.inProgress:
-        color = Colors.orange;
-        break;
-      case AppointmentStatus.completed:
-        color = Colors.green;
-        break;
-      case AppointmentStatus.cancelled:
-        color = Colors.red;
-        break;
-    }
-    
-    return Chip(
-      label: Text(
-        label[0].toUpperCase() + label.substring(1),
-        style: const TextStyle(color: Colors.white),
-      ),
-      backgroundColor: color,
-    );
-  }
-  
-  Widget _buildStatisticsSection(Volunteer volunteer, BoxConstraints constraints) {
+  Widget _buildStatisticsSection(Volunteer volunteer, BoxConstraints constraints, bool isNarrow) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Your Impact',
           style: TextStyle(
-            fontSize: 20,
+            fontSize: isNarrow ? 18 : 20,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -359,6 +382,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                     icon: Icons.timer,
                     color: Colors.blue,
                     maxWidth: boxConstraints.maxWidth * 0.5,
+                    isNarrow: isNarrow,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -369,6 +393,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                     icon: Icons.location_on,
                     color: Colors.orange,
                     maxWidth: boxConstraints.maxWidth * 0.5,
+                    isNarrow: isNarrow,
                   ),
                 ),
               ],
@@ -385,23 +410,24 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     required IconData icon,
     required Color color,
     required double maxWidth,
+    required bool isNarrow,
   }) {
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: maxWidth),
       child: Card(
         elevation: 2,
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(isNarrow ? 8.0 : 16.0),
           child: Column(
             children: [
-              Icon(icon, color: color, size: 32),
+              Icon(icon, color: color, size: isNarrow ? 24 : 32),
               const SizedBox(height: 8),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
                   value,
-                  style: const TextStyle(
-                    fontSize: 24,
+                  style: TextStyle(
+                    fontSize: isNarrow ? 20 : 24,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -414,6 +440,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.grey[600],
+                    fontSize: isNarrow ? 12 : 14,
                   ),
                 ),
               ),
@@ -424,14 +451,14 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     );
   }
   
-  Widget _buildActionCards(Volunteer volunteer, BoxConstraints constraints) {
+  Widget _buildActionCards(Volunteer volunteer, BoxConstraints constraints, bool isNarrow) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Quick Actions',
           style: TextStyle(
-            fontSize: 20,
+            fontSize: isNarrow ? 18 : 20,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -446,6 +473,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                     icon: Icons.calendar_today,
                     color: Colors.green,
                     maxWidth: boxConstraints.maxWidth * 0.5,
+                    isNarrow: isNarrow,
                     onTap: () {
                       Navigator.push(
                         context,
@@ -463,6 +491,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                     icon: Icons.schedule,
                     color: Colors.purple,
                     maxWidth: boxConstraints.maxWidth * 0.5,
+                    isNarrow: isNarrow,
                     onTap: () {
                       Navigator.push(
                         context,
@@ -486,6 +515,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     required IconData icon,
     required Color color,
     required double maxWidth,
+    required bool isNarrow,
     required VoidCallback onTap,
   }) {
     return ConstrainedBox(
@@ -495,18 +525,21 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(isNarrow ? 8.0 : 16.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: color, size: 32),
+                Icon(icon, color: color, size: isNarrow ? 24 : 32),
                 const SizedBox(height: 8),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
                     title,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: isNarrow ? 14 : 16,
+                    ),
                   ),
                 ),
               ],
