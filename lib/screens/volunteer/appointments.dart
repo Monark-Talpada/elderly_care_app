@@ -116,30 +116,49 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Appointments'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Upcoming'),
-            Tab(text: 'Past'),
-          ],
-        ),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('My Appointments'),
+            bottom: TabBar(
               controller: _tabController,
-              children: [
-                _buildAppointmentsList(_upcomingAppointments, isUpcoming: true),
-                _buildAppointmentsList(_pastAppointments, isUpcoming: false),
+              tabs: const [
+                Tab(text: 'Upcoming'),
+                Tab(text: 'Past'),
               ],
             ),
+          ),
+          body: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+                  onRefresh: _loadAppointments,
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildAppointmentsList(
+                        _upcomingAppointments, 
+                        isUpcoming: true, 
+                        maxWidth: constraints.maxWidth
+                      ),
+                      _buildAppointmentsList(
+                        _pastAppointments, 
+                        isUpcoming: false, 
+                        maxWidth: constraints.maxWidth
+                      ),
+                    ],
+                  ),
+                ),
+        );
+      },
     );
   }
 
-  Widget _buildAppointmentsList(List<Appointment> appointments, {required bool isUpcoming}) {
+  Widget _buildAppointmentsList(
+    List<Appointment> appointments, {
+    required bool isUpcoming, 
+    required double maxWidth
+  }) {
     if (appointments.isEmpty) {
       return Center(
         child: Text(
@@ -147,140 +166,187 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
               ? 'No upcoming appointments' 
               : 'No past appointments',
           style: const TextStyle(fontSize: 16),
+          textAlign: TextAlign.center,
         ),
       );
     }
 
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       itemCount: appointments.length,
       itemBuilder: (context, index) {
         final appointment = appointments[index];
         final SeniorCitizen? senior = _seniorProfiles[appointment.seniorId];
         
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            return Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Appointment with ${senior?.name ?? 'Senior'}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                    _buildStatusChip(appointment.status),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Icon(Icons.calendar_today, size: 16),
-                    const SizedBox(width: 8),
-                    Text(
-                      DateFormat('MMM dd, yyyy').format(appointment.startTime),
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.access_time, size: 16),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${DateFormat.jm().format(appointment.startTime)} - ${DateFormat.jm().format(appointment.endTime)}',
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                  ],
-                ),
-                if (appointment.notes != null && appointment.notes!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.note, size: 16),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Notes: ${appointment.notes}',
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                if (isUpcoming) ...[
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      if (appointment.status == AppointmentStatus.scheduled) ...[
-                        ElevatedButton(
-                          onPressed: () => _updateAppointmentStatus(
-                            appointment, 
-                            AppointmentStatus.inProgress
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Appointment with ${senior?.name ?? 'Senior'}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                          ),
-                          child: const Text('Start'),
                         ),
                         const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: () => _updateAppointmentStatus(
-                            appointment, 
-                            AppointmentStatus.cancelled
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                          ),
-                          child: const Text('Cancel'),
-                        ),
-                      ] else if (appointment.status == AppointmentStatus.inProgress) ...[
-                        ElevatedButton(
-                          onPressed: () => _updateAppointmentStatus(
-                            appointment, 
-                            AppointmentStatus.completed
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color.fromARGB(255, 249, 249, 249),
-                          ),
-                          child: const Text('Complete'),
-                        ),
+                        _buildStatusChip(appointment.status),
                       ],
-                    ],
-                  ),
-                ] else if (appointment.rating != null) ...[
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Icon(Icons.star, color: Colors.amber),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Rating: ${appointment.rating}/5',
-                        style: const TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildIconTextRow(
+                      icon: Icons.calendar_today, 
+                      text: DateFormat('MMM dd, yyyy').format(appointment.startTime)
+                    ),
+                    const SizedBox(height: 8),
+                    _buildIconTextRow(
+                      icon: Icons.access_time, 
+                      text: '${DateFormat.jm().format(appointment.startTime)} - ${DateFormat.jm().format(appointment.endTime)}'
+                    ),
+                    if (appointment.notes != null && appointment.notes!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _buildIconTextRow(
+                        icon: Icons.note, 
+                        text: 'Notes: ${appointment.notes}',
+                        isMultiline: true,
                       ),
                     ],
-                  ),
-                  if (appointment.feedback != null && appointment.feedback!.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Feedback: ${appointment.feedback}',
-                      style: const TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
-                    ),
+                    if (isUpcoming) ...[
+                      const SizedBox(height: 16),
+                      _buildAppointmentActions(appointment, constraints)
+                    ] else if (appointment.rating != null) ...[
+                      const SizedBox(height: 12),
+                      _buildRatingAndFeedback(appointment)
+                    ],
                   ],
-                ],
-              ],
-            ),
-          ),
+                ),
+              ),
+            );
+          },
         );
       },
+    );
+  }
+
+  Widget _buildIconTextRow({
+    required IconData icon, 
+    required String text, 
+    bool isMultiline = false
+  }) {
+    return Row(
+      crossAxisAlignment: isMultiline 
+          ? CrossAxisAlignment.start 
+          : CrossAxisAlignment.center,
+      children: [
+        Icon(icon, size: 16),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(fontSize: 16),
+            overflow: TextOverflow.ellipsis,
+            maxLines: isMultiline ? 3 : 1,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAppointmentActions(Appointment appointment, BoxConstraints constraints) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        if (appointment.status == AppointmentStatus.scheduled) ...[
+          _buildActionButton(
+            text: 'Start',
+            color: Colors.green,
+            onPressed: () => _updateAppointmentStatus(
+              appointment, 
+              AppointmentStatus.inProgress
+            ),
+          ),
+          const SizedBox(width: 8),
+          _buildActionButton(
+            text: 'Cancel',
+            color: Colors.red,
+            onPressed: () => _updateAppointmentStatus(
+              appointment, 
+              AppointmentStatus.cancelled
+            ),
+          ),
+        ] else if (appointment.status == AppointmentStatus.inProgress) ...[
+          _buildActionButton(
+            text: 'Complete',
+            color: const Color.fromARGB(255, 249, 249, 249),
+            onPressed: () => _updateAppointmentStatus(
+              appointment, 
+              AppointmentStatus.completed
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildActionButton({
+    required String text,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        minimumSize: const Size(100, 40),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRatingAndFeedback(Appointment appointment) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.star, color: Colors.amber),
+            const SizedBox(width: 8),
+            Text(
+              'Rating: ${appointment.rating}/5',
+              style: const TextStyle(fontSize: 16),
+            ),
+          ],
+        ),
+        if (appointment.feedback != null && appointment.feedback!.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Feedback: ${appointment.feedback}',
+            style: const TextStyle(
+              fontSize: 16, 
+              fontStyle: FontStyle.italic
+            ),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ],
     );
   }
 

@@ -96,50 +96,136 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
           );
         }
         
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Volunteer Dashboard'),
-            actions: [
-              // Add profile icon in the app bar
-              IconButton(
-                icon: const CircleAvatar(
-                  radius: 14,
-                  child: Icon(Icons.person, size: 16),
-                ),
-                onPressed: () {
-                  Navigator.pushNamed(
-                    context,
-                    '/volunteer_profile',
-                    arguments: volunteer,
-                  );
-                },
-                tooltip: 'Update Profile',
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            return Scaffold(
+              appBar: AppBar(
+                title: const Text('Volunteer Dashboard'),
+                actions: [
+                  IconButton(
+                    icon: const CircleAvatar(
+                      radius: 14,
+                      child: Icon(Icons.person, size: 16),
+                    ),
+                    onPressed: () {
+                      Navigator.pushNamed(
+                        context,
+                        '/volunteer_profile',
+                        arguments: volunteer,
+                      );
+                    },
+                    tooltip: 'Update Profile',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.exit_to_app),
+                    onPressed: _signOut,
+                  ),
+                ],
               ),
-              IconButton(
-                icon: const Icon(Icons.exit_to_app),
-                onPressed: _signOut,
-              ),
-            ],
-          ),
-          body: RefreshIndicator(
-            onRefresh: _loadData,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildVolunteerHeader(volunteer),
-                    const SizedBox(height: 24),
-                    _buildUpcomingAppointmentsSection(),
-                    const SizedBox(height: 24),
-                    _buildStatisticsSection(volunteer),
-                    const SizedBox(height: 24),
-                    _buildActionCards(volunteer),
+              body: RefreshIndicator(
+                onRefresh: _loadData,
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.all(16.0),
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate([
+                          _buildVolunteerHeader(volunteer),
+                          SizedBox(height: constraints.maxHeight * 0.03),
+                          _buildUpcomingAppointmentsSection(constraints),
+                          SizedBox(height: constraints.maxHeight * 0.03),
+                          _buildStatisticsSection(volunteer, constraints),
+                          SizedBox(height: constraints.maxHeight * 0.03),
+                          _buildActionCards(volunteer, constraints),
+                        ]),
+                      ),
+                    ),
                   ],
                 ),
               ),
+            );
+          },
+        );
+      },
+    );
+  }
+  
+  Widget _buildVolunteerHeader(Volunteer volunteer) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Card(
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: constraints.maxWidth * 0.1,
+                  backgroundImage: volunteer.photoUrl != null 
+                      ? NetworkImage(volunteer.photoUrl!)
+                      : null,
+                  child: volunteer.photoUrl == null
+                      ? const Icon(Icons.person, size: 40)
+                      : null,
+                ),
+                SizedBox(width: constraints.maxWidth * 0.04),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          volunteer.name,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.verified,
+                            color: volunteer.isVerified ? Colors.green : Colors.grey,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              volunteer.isVerified ? 'Verified Volunteer' : 'Pending Verification',
+                              style: TextStyle(
+                                color: volunteer.isVerified ? Colors.green : Colors.grey,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (volunteer.rating != null) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.star, color: Colors.amber, size: 20),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                '${volunteer.rating!.toStringAsFixed(1)} (${volunteer.ratingCount ?? 0} reviews)',
+                                style: const TextStyle(
+                                  color: Colors.black54,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -147,74 +233,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     );
   }
   
-  Widget _buildVolunteerHeader(Volunteer volunteer) {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundImage: volunteer.photoUrl != null 
-                  ? NetworkImage(volunteer.photoUrl!)
-                  : null,
-              child: volunteer.photoUrl == null
-                  ? const Icon(Icons.person, size: 40)
-                  : null,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    volunteer.name,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.verified,
-                        color: volunteer.isVerified ? Colors.green : Colors.grey,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        volunteer.isVerified ? 'Verified Volunteer' : 'Pending Verification',
-                        style: TextStyle(
-                          color: volunteer.isVerified ? Colors.green : Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (volunteer.rating != null) ...[
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 20),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${volunteer.rating!.toStringAsFixed(1)} (${volunteer.ratingCount ?? 0} reviews)',
-                          style: const TextStyle(color: Colors.black54),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildUpcomingAppointmentsSection() {
+  Widget _buildUpcomingAppointmentsSection(BoxConstraints constraints) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -260,22 +279,30 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
             ),
           )
         else
-          Column(
-            children: _upcomingAppointments.map((appointment) {
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  title: Text(
-                    DateFormat('MMM dd, yyyy').format(appointment.startTime),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: constraints.maxHeight * 0.3,
+            ),
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: _upcomingAppointments.length,
+              itemBuilder: (context, index) {
+                final appointment = _upcomingAppointments[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    title: Text(
+                      DateFormat('MMM dd, yyyy').format(appointment.startTime),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                      '${DateFormat.jm().format(appointment.startTime)} - ${DateFormat.jm().format(appointment.endTime)}',
+                    ),
+                    trailing: _buildStatusChip(appointment.status),
                   ),
-                  subtitle: Text(
-                    '${DateFormat.jm().format(appointment.startTime)} - ${DateFormat.jm().format(appointment.endTime)}',
-                  ),
-                  trailing: _buildStatusChip(appointment.status),
-                ),
-              );
-            }).toList(),
+                );
+              },
+            ),
           ),
       ],
     );
@@ -309,7 +336,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     );
   }
   
-  Widget _buildStatisticsSection(Volunteer volunteer) {
+  Widget _buildStatisticsSection(Volunteer volunteer, BoxConstraints constraints) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -321,26 +348,32 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                title: 'Hours Volunteered',
-                value: volunteer.totalHoursVolunteered.toString(),
-                icon: Icons.timer,
-                color: Colors.blue,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildStatCard(
-                title: 'Areas Served',
-                value: volunteer.servingAreas.length.toString(),
-                icon: Icons.location_on,
-                color: Colors.orange,
-              ),
-            ),
-          ],
+        LayoutBuilder(
+          builder: (context, boxConstraints) {
+            return Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    title: 'Hours Volunteered',
+                    value: volunteer.totalHoursVolunteered.toString(),
+                    icon: Icons.timer,
+                    color: Colors.blue,
+                    maxWidth: boxConstraints.maxWidth * 0.5,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildStatCard(
+                    title: 'Areas Served',
+                    value: volunteer.servingAreas.length.toString(),
+                    icon: Icons.location_on,
+                    color: Colors.orange,
+                    maxWidth: boxConstraints.maxWidth * 0.5,
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -351,37 +384,47 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     required String value,
     required IconData icon,
     required Color color,
+    required double maxWidth,
   }) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: Card(
+        elevation: 2,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 32),
+              const SizedBox(height: 8),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.grey[600],
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
   
-  Widget _buildActionCards(Volunteer volunteer) {
+  Widget _buildActionCards(Volunteer volunteer, BoxConstraints constraints) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -393,40 +436,46 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildActionCard(
-                title: 'Update Availability',
-                icon: Icons.calendar_today,
-                color: Colors.green,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AvailabilityScreen(volunteer: volunteer),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildActionCard(
-                title: 'Manage Appointments',
-                icon: Icons.schedule,
-                color: Colors.purple,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AppointmentsScreen(volunteer: volunteer),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
+        LayoutBuilder(
+          builder: (context, boxConstraints) {
+            return Row(
+              children: [
+                Expanded(
+                  child: _buildActionCard(
+                    title: 'Update Availability',
+                    icon: Icons.calendar_today,
+                    color: Colors.green,
+                    maxWidth: boxConstraints.maxWidth * 0.5,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AvailabilityScreen(volunteer: volunteer),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildActionCard(
+                    title: 'Manage Appointments',
+                    icon: Icons.schedule,
+                    color: Colors.purple,
+                    maxWidth: boxConstraints.maxWidth * 0.5,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AppointmentsScreen(volunteer: volunteer),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -436,25 +485,32 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
     required String title,
     required IconData icon,
     required Color color,
+    required double maxWidth,
     required VoidCallback onTap,
   }) {
-    return Card(
-      elevation: 2,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: color, size: 32),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ],
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: Card(
+        elevation: 2,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: color, size: 32),
+                const SizedBox(height: 8),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

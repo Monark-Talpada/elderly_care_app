@@ -33,10 +33,10 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
   Future<void> _loadAvailability() async {
     setState(() {
       _isLoading = true;
+      _availability = widget.volunteer.availability;
     });
     
-    _availability = widget.volunteer.availability;
-    
+    await Future.delayed(const Duration(milliseconds: 300));
     setState(() {
       _isLoading = false;
     });
@@ -95,7 +95,6 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
       }
     });
 
-    // Update in Firestore
     await _updateAvailability();
   }
 
@@ -128,66 +127,105 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
       }
     });
 
-    // Update in Firestore
     await _updateAvailability();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Manage Availability'),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                TableCalendar(
-                  firstDay: DateTime.now(),
-                  lastDay: DateTime.now().add(const Duration(days: 90)),
-                  focusedDay: _focusedDay,
-                  calendarFormat: _calendarFormat,
-                  selectedDayPredicate: (day) {
-                    return isSameDay(_selectedDay, day);
-                  },
-                  onDaySelected: (selectedDay, focusedDay) {
-                    setState(() {
-                      _selectedDay = selectedDay;
-                      _focusedDay = focusedDay;
-                    });
-                  },
-                  onFormatChanged: (format) {
-                    setState(() {
-                      _calendarFormat = format;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Available Time Slots for ${DateFormat('MMM dd, yyyy').format(_selectedDay)}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Manage Availability'),
+          ),
+          body: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+                  onRefresh: _loadAvailability,
+                  child: CustomScrollView(
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: _buildCalendarSection(constraints),
                       ),
-                      ElevatedButton(
-                        onPressed: _addTimeSlot,
-                        child: const Text('Add Slot'),
+                      SliverToBoxAdapter(
+                        child: _buildTimeSlotHeader(),
                       ),
+                      _buildTimeSlotsList(),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: _buildTimeSlotsList(),
-                ),
-              ],
+        );
+      },
+    );
+  }
+
+  Widget _buildCalendarSection(BoxConstraints constraints) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: constraints.maxHeight * 0.4,
+        minHeight: constraints.maxHeight * 0.3,
+      ),
+      child: TableCalendar(
+        headerStyle: HeaderStyle(
+          titleCentered: true,
+          formatButtonVisible: false,
+          headerPadding: const EdgeInsets.symmetric(vertical: 8),
+        ),
+        calendarStyle: CalendarStyle(
+          todayDecoration: BoxDecoration(
+            color: Colors.blue.shade200,
+            shape: BoxShape.circle,
+          ),
+          selectedDecoration: BoxDecoration(
+            color: Colors.blue.shade600,
+            shape: BoxShape.circle,
+          ),
+        ),
+        firstDay: DateTime.now(),
+        lastDay: DateTime.now().add(const Duration(days: 90)),
+        focusedDay: _focusedDay,
+        calendarFormat: _calendarFormat,
+        selectedDayPredicate: (day) {
+          return isSameDay(_selectedDay, day);
+        },
+        onDaySelected: (selectedDay, focusedDay) {
+          setState(() {
+            _selectedDay = selectedDay;
+            _focusedDay = focusedDay;
+          });
+        },
+        onFormatChanged: (format) {
+          setState(() {
+            _calendarFormat = format;
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildTimeSlotHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              'Available Time Slots for ${DateFormat('MMM dd, yyyy').format(_selectedDay)}',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: _addTimeSlot,
+            child: const Text('Add Slot'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -196,40 +234,48 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     final List<TimeSlot> daySlots = _availability[dayKey] ?? [];
 
     if (daySlots.isEmpty) {
-      return const Center(
-        child: Text('No availability added for this day. Tap "Add Slot" to add time slots.'),
+      return SliverFillRemaining(
+        child: Center(
+          child: Text(
+            'No availability added for this day. Tap "Add Slot" to add time slots.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+        ),
       );
     }
 
-    return ListView.builder(
-      itemCount: daySlots.length,
-      itemBuilder: (context, index) {
-        final TimeSlot slot = daySlots[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: ListTile(
-            title: Text(
-              '${DateFormat.jm().format(slot.startTime)} - ${DateFormat.jm().format(slot.endTime)}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text(
-              slot.isBooked ? 'Booked' : 'Available',
-              style: TextStyle(
-                color: slot.isBooked ? Colors.red : Colors.green,
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          final TimeSlot slot = daySlots[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: ListTile(
+              title: Text(
+                '${DateFormat.jm().format(slot.startTime)} - ${DateFormat.jm().format(slot.endTime)}',
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
+              subtitle: Text(
+                slot.isBooked ? 'Booked' : 'Available',
+                style: TextStyle(
+                  color: slot.isBooked ? Colors.red : Colors.green,
+                ),
+              ),
+              trailing: slot.isBooked
+                  ? const Chip(
+                      label: Text('Reserved'),
+                      backgroundColor: Colors.amber,
+                    )
+                  : IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _removeTimeSlot(dayKey, index),
+                    ),
             ),
-            trailing: slot.isBooked
-                ? const Chip(
-                    label: Text('Reserved'),
-                    backgroundColor: Colors.amber,
-                  )
-                : IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => _removeTimeSlot(dayKey, index),
-                  ),
-          ),
-        );
-      },
+          );
+        },
+        childCount: daySlots.length,
+      ),
     );
   }
 }
