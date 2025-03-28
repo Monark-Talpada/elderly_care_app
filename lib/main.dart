@@ -7,6 +7,8 @@ import 'package:elderly_care_app/screens/senior/senior_home.dart';
 import 'package:elderly_care_app/screens/senior/family_connection.dart';
 import 'package:elderly_care_app/screens/volunteer/volunteer_home.dart';
 import 'screens/volunteer/volunteer_profile_screen.dart';
+
+// New screen imports
 import 'package:elderly_care_app/screens/family/connect_senior.dart';
 import 'package:elderly_care_app/screens/family/senior_profile.dart';
 import 'package:elderly_care_app/screens/family/emergency_map.dart';
@@ -85,60 +87,71 @@ class MyApp extends StatelessWidget {
           secondary: Colors.orange,
         ),
       ),
-      routes: {
-        '/': (context) => const SplashScreen(),
-        '/login': (context) => const LoginScreen(),
-        '/register': (context) => const RegisterScreen(),
-        '/user_type_selection': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as String;
-          return UserTypeSelectionScreen(userId: args);
-        },
-        '/senior_home': (context) => const SeniorHomeScreen(),
-        '/family_home': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as FamilyMember;
-          return FamilyHomeScreen(family: args);
-        },
-        '/volunteer_home': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Volunteer;
-          return VolunteerHomeScreen(volunteerId: args.id);
-        },
-        '/volunteer_profile': (context) => VolunteerProfileScreen(
-              volunteer: ModalRoute.of(context)!.settings.arguments as Volunteer,
-            ),
-        '/emergency_button': (context) => const EmergencyButtonScreen(),
-        '/family/connect_senior': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as FamilyMember;
-          return ConnectSeniorScreen(family: args);
-        },
-        '/family/senior_profile': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-          return SeniorProfileScreen(
-            senior: args['senior'] as SeniorCitizen,
-            familyMember: args['familyMember'] as FamilyMember,
-          );
-        },
-        '/family/emergency_map': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as List<SeniorCitizen>;
-          return EmergencyMapScreen(seniors: args);
-        },
-        '/senior/daily_needs': (context) => const DailyNeedsScreen(),
-        '/senior/add_need': (context) => const AddNeedScreen(),
-        '/senior/edit_need': (context) {
-          final need = ModalRoute.of(context)!.settings.arguments as DailyNeed;
-          return AddNeedScreen(need: need);
-        },
-        '/senior/profile': (context) => SeniorProfile(),
-        '/senior/select_volunteer': (context) => const SelectVolunteerScreen(),
-        '/senior/family_connections': (context) => const FamilyConnectionsScreen(),
-        '/volunteer/appointments': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Volunteer;
-          return AppointmentsScreen(volunteer: args);
-        },
-        '/volunteer/availability': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Volunteer;
-          return AvailabilityScreen(volunteer: args);
-        },
+      // Updated routes to include new screens
+        routes: {
+      '/': (context) => const SplashScreen(),
+      '/login': (context) => const LoginScreen(),
+      '/register': (context) => const RegisterScreen(),
+      '/user_type_selection': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as String;
+        return UserTypeSelectionScreen(userId: args);
       },
+      '/senior_home': (context) => const SeniorHomeScreen(),
+      '/family_home': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as FamilyMember;
+        return FamilyHomeScreen(family: args);
+      },
+      '/volunteer_home': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as Volunteer;
+        return VolunteerHomeScreen(volunteerId: args.id);
+      },
+      '/volunteer_profile': (context) => VolunteerProfileScreen(
+  volunteer: ModalRoute.of(context)!.settings.arguments as Volunteer,
+),
+      
+      // Emergency and additional screens
+      '/emergency_button': (context) => const EmergencyButtonScreen(),
+      
+      // Family screens
+      '/family/connect_senior': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as FamilyMember;
+        return ConnectSeniorScreen(family: args);
+      },
+      '/family/senior_profile': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+        return SeniorProfileScreen(
+          senior: args['senior'] as SeniorCitizen, 
+          familyMember: args['familyMember'] as FamilyMember,
+        );
+      },
+      '/family/emergency_map': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as List<SeniorCitizen>;
+        return EmergencyMapScreen(seniors: args);
+      },
+      
+      // Senior Needs-related routes
+      '/senior/daily_needs': (context) => const DailyNeedsScreen(),
+      '/senior/add_need': (context) => const AddNeedScreen(),
+      '/senior/edit_need': (context) {
+        final need = ModalRoute.of(context)!.settings.arguments as DailyNeed;
+        return AddNeedScreen(need: need);
+      },
+      '/senior/profile': (context) => SeniorProfile(),
+      
+      '/senior/select_volunteer': (context) => const SelectVolunteerScreen(),
+
+      '/senior/family_connections': (context) => const FamilyConnectionsScreen(),
+
+      // Volunteer-related routes
+      '/volunteer/appointments': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as Volunteer;
+        return AppointmentsScreen(volunteer: args);
+      },
+      '/volunteer/availability': (context) {
+        final args = ModalRoute.of(context)!.settings.arguments as Volunteer;
+        return AvailabilityScreen(volunteer: args);
+      },
+    },
       initialRoute: '/',
       onGenerateRoute: (settings) => null,
       onUnknownRoute: (settings) {

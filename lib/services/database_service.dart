@@ -140,6 +140,7 @@ Future<List<DailyNeed>> getSeniorNeeds(String seniorId) async {
     }
   }
 
+
   
   // Update user location
   Future<bool> updateUserLocation(String userId, GeoPoint location) async {
@@ -162,7 +163,95 @@ Future<List<DailyNeed>> getSeniorNeeds(String seniorId) async {
       return false;
     }
   }
-  
+
+Future<List<FamilyMember>> getEmergencyContacts(String seniorId) async {
+  try {
+    // Fetch the senior document
+    final seniorDoc = await _firestore.collection('users').doc(seniorId).get();
+    
+    if (!seniorDoc.exists) {
+      return [];
+    }
+
+    // Get emergency contact IDs
+    final emergencyContactIds = List<String>.from(
+      seniorDoc.data()?['emergencyContactIds'] ?? []
+    );
+
+    if (emergencyContactIds.isEmpty) {
+      return [];
+    }
+
+    // Fetch emergency contact details from multiple collections
+    final emergencyContactsFutures = emergencyContactIds.map((contactId) async {
+      final userDoc = await _firestore.collection('users').doc(contactId).get();
+      final familyDoc = await _firestore.collection('family_members').doc(contactId).get();
+      
+      if (userDoc.exists && familyDoc.exists) {
+        // Merge data from both collections
+        final mergedData = {
+          ...?userDoc.data(),
+          ...?familyDoc.data(),
+          'id': contactId
+        };
+        
+        return FamilyMember.fromMap(mergedData, contactId);
+      }
+      
+      return null;
+    });
+
+    // Filter out null results and return only valid emergency contacts
+    final emergencyContacts = await Future.wait(emergencyContactsFutures);
+    return emergencyContacts.whereType<FamilyMember>().toList();
+  } catch (e) {
+    if (kDebugMode) {
+      print('Error fetching emergency contacts: $e');
+    }
+    return [];
+  }
+}
+
+// Optional: Method to add an emergency contact
+Future<bool> addEmergencyContact(String seniorId, String contactId) async {
+  try {
+    // Get the current senior's document
+    final seniorDocRef = _firestore.collection('users').doc(seniorId);
+    
+    // Update the emergency contact IDs array
+    await seniorDocRef.update({
+      'emergencyContactIds': FieldValue.arrayUnion([contactId])
+    });
+    
+    return true;
+  } catch (e) {
+    if (kDebugMode) {
+      print('Error adding emergency contact: $e');
+    }
+    return false;
+  }
+}
+
+// Optional: Method to remove an emergency contact
+Future<bool> removeEmergencyContact(String seniorId, String contactId) async {
+  try {
+    // Get the current senior's document
+    final seniorDocRef = _firestore.collection('users').doc(seniorId);
+    
+    // Remove the contact ID from the emergency contact IDs array
+    await seniorDocRef.update({
+      'emergencyContactIds': FieldValue.arrayRemove([contactId])
+    });
+    
+    return true;
+  } catch (e) {
+    if (kDebugMode) {
+      print('Error removing emergency contact: $e');
+    }
+    return false;
+  }
+}
+ 
   // Toggle emergency mode
   Future<bool> toggleEmergencyMode(String seniorId, bool isActive) async {
     try {
