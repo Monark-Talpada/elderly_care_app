@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>OneSignal Test</title>
+</head>
+<body>
+  <h1>OneSignal Notification Prompt Test</h1>
+  <p>If the OneSignal prompt works, you should see a slidedown or bell icon to subscribe to notifications.</p>
+  <button onclick="triggerPrompt()">Manually Trigger Prompt</button>
+
+  <!-- OneSignal Web SDK -->
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    window.OneSignalDeferred.push(function(OneSignal) {
+      console.log("OneSignal SDK loaded");
+
+      OneSignal.init({
+        appId: "b00dcbca-ae9e-4275-b465-20370bb2a03f", // Same App ID as in your backend
+        safari_web_id: "web.onesignal.auto.0f1b3c4d-1e2a-4b5c-9d8e-0f1b3c4d1e2a",
+        autoResubscribe: true,
+        notifyButton: {
+          enable: true,
+          size: 'medium',
+          theme: 'default',
+          position: 'bottom-right',
+          text: {
+            'tip.state.unsubscribed': 'Subscribe to notifications',
+            'tip.state.subscribed': "You're subscribed to notifications",
+            'tip.state.blocked': "You've blocked notifications",
+            'message.prenotify': 'Click to subscribe to notifications',
+            'message.action.subscribed': "Thanks for subscribing!",
+            'message.action.resubscribed': "You're subscribed to notifications",
+            'message.action.unsubscribed': "You won't receive notifications again",
+            'dialog.main.title': 'Manage Site Notifications',
+            'dialog.main.button.subscribe': 'SUBSCRIBE',
+            'dialog.main.button.unsubscribe': 'UNSUBSCRIBE',
+            'dialog.blocked.title': 'Unblock Notifications',
+            'dialog.blocked.message': 'Follow these instructions to allow notifications:'
+          }
+        },
+        welcomeNotification: {
+          "title": "Welcome to OneSignal Test!",
+          "message": "Thanks for subscribing to notifications!"
+        },
+        allowLocalhostAsSecureOrigin: true, // For local testing
+        serviceWorkerPath: '/OneSignalSDKWorker.js', // Path to the service worker (if downloaded)
+        serviceWorkerUpdaterPath: '/OneSignalSDKUpdaterWorker.js' // Path to the updater service worker (if downloaded)
+      }).then(() => {
+        console.log("OneSignal initialized successfully");
+        console.log("Notification permission:", OneSignal.Notifications.permission);
+        console.log("Is push supported:", OneSignal.Notifications.isPushSupported());
+        console.log("User subscription opted in:", OneSignal.User.PushSubscription.optedIn);
+
+        if (!OneSignal.User.PushSubscription.optedIn) {
+          console.log("Push notifications not enabled, showing slidedown prompt");
+          OneSignal.Slidedown.promptPush().then(() => {
+            console.log("Slidedown prompt displayed successfully");
+          }).catch((error) => {
+            console.error("Error showing slidedown prompt:", error);
+          });
+        } else {
+          console.log("User already opted in to push notifications");
+          console.log("OneSignal User ID (player_id):", OneSignal.User.PushSubscription.id);
+        }
+      }).catch((error) => {
+        console.error("Error initializing OneSignal:", error);
+      });
+
+      OneSignal.User.PushSubscription.addEventListener('change', function(isSubscribed) {
+        console.log("Push subscription changed:", isSubscribed);
+        if (isSubscribed.optedIn) {
+          console.log("OneSignal User ID (player_id):", OneSignal.User.PushSubscription.id);
+        }
+      });
+
+      OneSignal.Notifications.addEventListener('permissionChange', function(permission) {
+        console.log('Notification permission changed:', permission);
+        if (permission) {
+          console.log("OneSignal User ID (player_id):", OneSignal.User.PushSubscription.id);
+        }
+      });
+    });
+
+    function triggerPrompt() {
+      window.OneSignalDeferred.push(function(OneSignal) {
+        console.log("Manually triggering prompt...");
+        OneSignal.Slidedown.promptPush().then(() => {
+          console.log("Slidedown prompt displayed successfully (manual trigger)");
+        }).catch((error) => {
+          console.error("Error showing slidedown prompt (manual trigger):", error);
+        });
+      });
+    }
+  </script>
+</body>
+</html>

@@ -6,6 +6,7 @@ import 'package:elderly_care_app/models/family_model.dart';
 import 'package:elderly_care_app/services/auth_service.dart';
 import 'package:elderly_care_app/services/database_service.dart';
 import 'package:elderly_care_app/utils/navigation_utils.dart';
+import 'package:elderly_care_app/screens/senior/emergency_button.dart';
 import 'package:intl/intl.dart';
 
 class SeniorHomeScreen extends StatefulWidget {
@@ -21,7 +22,7 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
   bool _isLoading = true;
   SeniorCitizen? _senior;
   List<DailyNeed> _upcomingNeeds = [];
-  List<FamilyMember> _connectedFamilyMembers = []; 
+  List<FamilyMember> _connectedFamilyMembers = [];
 
   @override
   void initState() {
@@ -36,12 +37,11 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
       setState(() {
         _isLoading = true;
       });
-      
+
       final user = _authService.currentUser;
       if (user != null) {
-        // First load the senior data
         final senior = await _databaseService.getSeniorById(user.id);
-        
+
         if (senior == null) {
           print('Senior not found for ID: ${user.id}');
           setState(() {
@@ -49,28 +49,26 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
           });
           return;
         }
-        
-        print('Loading needs for senior ID: ${senior.id}');
-        
-        // Then load the needs for this senior
-        final needs = await _databaseService.getSeniorNeeds(senior.id);
-        
-        print('Loaded ${needs.length} needs');
-        
-        // Sort needs by due date
-        needs.sort((a, b) => a.dueDate.compareTo(b.dueDate));
-        
-        // Filter for upcoming needs (not completed or cancelled)
-        final upcomingNeeds = needs.where((need) => 
-            need.status != NeedStatus.completed && 
-            need.status != NeedStatus.cancelled).toList();
 
-        final familyMembers = await _databaseService.getConnectedFamilyMembers(senior.id);
-        
+        print('Loading needs for senior ID: ${senior.id}');
+        final needs = await _databaseService.getSeniorNeeds(senior.id);
+        print('Loaded ${needs.length} needs');
+
+        needs.sort((a, b) => a.dueDate.compareTo(b.dueDate));
+        final upcomingNeeds = needs
+            .where((need) =>
+                need.status != NeedStatus.completed &&
+                need.status != NeedStatus.cancelled)
+            .toList();
+
+        final familyMembers =
+            await _databaseService.getConnectedFamilyMembers(senior.id);
+
         if (mounted) {
           setState(() {
             _senior = senior;
             _upcomingNeeds = upcomingNeeds;
+            _connectedFamilyMembers = familyMembers;
             _isLoading = false;
           });
         }
@@ -89,38 +87,12 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
       }
     }
   }
-  Future<void> _toggleEmergencyMode() async {
-    if (_senior == null) return;
-    
-    try {
-      final updatedSenior = _senior!.copyWith(
-        emergencyModeActive: !_senior!.emergencyModeActive
-      );
-      
-      await _databaseService.updateSenior(updatedSenior);
-      
-      setState(() {
-        _senior = updatedSenior;
-      });
-      
-      // Show confirmation
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_senior!.emergencyModeActive 
-              ? 'Emergency mode activated! Help is on the way.' 
-              : 'Emergency mode deactivated.'),
-          backgroundColor: _senior!.emergencyModeActive ? Colors.red : Colors.green,
-        ),
-      );
-    } catch (e) {
-      print('Error toggling emergency mode: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to update emergency status'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+
+  void _navigateToEmergencyButton() {
+    Navigator.pushNamed(context, '/emergency_button').then((_) {
+      // Refresh data when returning from the emergency button screen
+      _loadSeniorData();
+    });
   }
 
   @override
@@ -189,9 +161,8 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
           children: [
             CircleAvatar(
               radius: 40,
-              backgroundImage: _senior!.photoUrl != null 
-                  ? NetworkImage(_senior!.photoUrl!)
-                  : null,
+              backgroundImage:
+                  _senior!.photoUrl != null ? NetworkImage(_senior!.photoUrl!) : null,
               child: _senior!.photoUrl == null
                   ? Text(_senior!.name.substring(0, 1).toUpperCase(),
                       style: const TextStyle(fontSize: 32))
@@ -227,7 +198,7 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
 
   Widget _buildEmergencyButton() {
     return InkWell(
-      onTap: _toggleEmergencyMode,
+      onTap: _navigateToEmergencyButton,
       child: Container(
         width: double.infinity,
         height: 80,
@@ -270,7 +241,6 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
             TextButton(
               onPressed: () {
                 Navigator.pushNamed(context, '/senior/daily_needs').then((_) {
-                  // Refresh data when returning from daily needs screen
                   _loadSeniorData();
                 });
               },
@@ -320,7 +290,7 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
   Widget _buildNeedCard(DailyNeed need) {
     final IconData icon;
     final Color color;
-    
+
     switch (need.type) {
       case NeedType.medication:
         icon = Icons.medication;
@@ -356,9 +326,8 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
         trailing: _getStatusChip(need.status),
         isThreeLine: true,
         onTap: () {
-          // Navigate to need details
           Navigator.pushNamed(
-            context, 
+            context,
             '/senior/need_details',
             arguments: need,
           );
@@ -370,7 +339,7 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
   Widget _getStatusChip(NeedStatus status) {
     Color color;
     String label;
-    
+
     switch (status) {
       case NeedStatus.pending:
         color = Colors.orange;
@@ -389,7 +358,7 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
         label = 'Cancelled';
         break;
     }
-    
+
     return Chip(
       label: Text(
         label,
@@ -402,199 +371,194 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
   }
 
   Widget _buildQuickActionsSection() {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        'Quick Actions',
-        style: Theme.of(context).textTheme.titleLarge,
-      ),
-      const SizedBox(height: 16),
-      GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        children: [
-          _buildActionCard(
-            'Add Need',
-            Icons.add_task,
-            Colors.green,
-            () => Navigator.pushNamed(context, '/senior/add_need'),
-          ),
-          _buildActionCard(
-            'Book Volunteer',
-            Icons.people,
-            Colors.blue,
-            () => Navigator.pushNamed(context, '/senior/select_volunteer'),
-          ),
-          _buildFamilyMembersCard(),
-          _buildActionCard(
-            'Emergency Contacts',
-            Icons.emergency,
-            Colors.red,
-            () => Navigator.pushNamed(context, '/senior/emergency_contacts'),
-          ),
-        ],
-      ),
-      const SizedBox(height: 24),
-      if (_connectedFamilyMembers.isNotEmpty) _buildFamilyMembersSection(),
-    ],
-  );
-}
-
-Widget _buildFamilyMembersCard() {
-  return Card(
-    elevation: 4,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    child: InkWell(
-      onTap: () => Navigator.pushNamed(context, '/senior/family_connections'),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Quick Actions',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 16),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
           children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Icon(
-                  Icons.family_restroom,
-                  size: 48,
-                  color: Colors.purple,
-                ),
-                if (_connectedFamilyMembers.isNotEmpty)
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        _connectedFamilyMembers.length.toString(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+            _buildActionCard(
+              'Add Need',
+              Icons.add_task,
+              Colors.green,
+              () => Navigator.pushNamed(context, '/senior/add_need'),
+            ),
+            _buildActionCard(
+              'Book Volunteer',
+              Icons.people,
+              Colors.blue,
+              () => Navigator.pushNamed(context, '/senior/select_volunteer'),
+            ),
+            _buildFamilyMembersCard(),
+            _buildActionCard(
+              'Emergency Contacts',
+              Icons.emergency,
+              Colors.red,
+              () => Navigator.pushNamed(context, '/senior/emergency_contacts'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        if (_connectedFamilyMembers.isNotEmpty) _buildFamilyMembersSection(),
+      ],
+    );
+  }
+
+  Widget _buildFamilyMembersCard() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: () => Navigator.pushNamed(context, '/senior/family_connections'),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  Icon(
+                    Icons.family_restroom,
+                    size: 48,
+                    color: Colors.purple,
+                  ),
+                  if (_connectedFamilyMembers.isNotEmpty)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          _connectedFamilyMembers.length.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Family Members',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
+                ],
               ),
-            ),
-            Text(
-              '${_connectedFamilyMembers.length} connected',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
+              const SizedBox(height: 8),
+              Text(
+                'Family Members',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
+              Text(
+                '${_connectedFamilyMembers.length} connected',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFamilyMembersSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Connected Family',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/senior/family_connections')
+                    .then((_) {
+                  _loadSeniorData();
+                });
+              },
+              child: const Text('View All'),
             ),
           ],
         ),
-      ),
-    ),
-  );
-}
-
-Widget _buildFamilyMembersSection() {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Connected Family',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/senior/family_connections').then((_) {
-                // Refresh data when returning from family connections screen
-                _loadSeniorData();
-              });
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 110,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount:
+                _connectedFamilyMembers.length > 5 ? 5 : _connectedFamilyMembers.length,
+            itemBuilder: (context, index) {
+              final member = _connectedFamilyMembers[index];
+              return _buildFamilyMemberCard(member);
             },
-            child: const Text('View All'),
           ),
-        ],
-      ),
-      const SizedBox(height: 8),
-      SizedBox(
-        height: 110,
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          itemCount: _connectedFamilyMembers.length > 5 ? 5 : _connectedFamilyMembers.length,
-          itemBuilder: (context, index) {
-            final member = _connectedFamilyMembers[index];
-            return _buildFamilyMemberCard(member);
-          },
         ),
-      ),
-    ],
-  );
-}
+      ],
+    );
+  }
 
-Widget _buildFamilyMemberCard(FamilyMember member) {
-  return Card(
-    margin: const EdgeInsets.only(right: 12),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    child: InkWell(
-      onTap: () {
-        // Navigate to family member details
-        // You might want to create this route
-        // Navigator.pushNamed(context, '/senior/family_member_details', arguments: member);
-      },
-      child: Container(
-        width: 100,
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircleAvatar(
-              radius: 24,
-              backgroundImage: member.photoUrl != null 
-                  ? NetworkImage(member.photoUrl!)
-                  : null,
-              child: member.photoUrl == null
-                  ? Text(member.name.substring(0, 1).toUpperCase(),
-                      style: const TextStyle(fontSize: 18))
-                  : null,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              member.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-            ),
-            if (member.relationship != null) 
+  Widget _buildFamilyMemberCard(FamilyMember member) {
+    return Card(
+      margin: const EdgeInsets.only(right: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: () {},
+        child: Container(
+          width: 100,
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundImage:
+                    member.photoUrl != null ? NetworkImage(member.photoUrl!) : null,
+                child: member.photoUrl == null
+                    ? Text(member.name.substring(0, 1).toUpperCase(),
+                        style: const TextStyle(fontSize: 18))
+                    : null,
+              ),
+              const SizedBox(height: 8),
               Text(
-                member.relationship!,
+                member.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
               ),
-          ],
+              if (member.relationship != null)
+                Text(
+                  member.relationship!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
-
+    );
+  }
 
   Widget _buildActionCard(String title, IconData icon, Color color, VoidCallback onTap) {
     return Card(
@@ -629,15 +593,14 @@ Widget _buildFamilyMemberCard(FamilyMember member) {
   }
 
   Future<void> _signOut() async {
-  try {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    await authService.signOut();
-    
-    NavigationUtils.signOut(context);
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error signing out: ${e.toString()}')),
-    );
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.signOut();
+      NavigationUtils.signOut(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error signing out: ${e.toString()}')),
+      );
+    }
   }
-}
 }

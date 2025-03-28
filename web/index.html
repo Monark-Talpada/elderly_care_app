@@ -1,57 +1,158 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!-- Add this in the <head> section of web/index.html -->
-<script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-messaging-compat.js"></script>
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+      await OneSignal.init({
+        appId: "b00dcbca-ae9e-4275-b465-20370bb2a03f",
+      });
+    });
+  </script>
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="elderly_care_app">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="icon" type="image/png" href="favicon.png"/>
+  <title>elderly_care_app</title>
+  <link rel="manifest" href="manifest.json">
 
+  <!-- Firebase SDK for Web -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js"></script>
-
-<script>
-  
-const firebaseConfig = {
-  apiKey: "AIzaSyAkwW8eKLiqRrHeywhnZqu_nOOl42VZVY8",
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAkwW8eKLiqRrHeywhnZqu_nOOl42VZVY8",
       authDomain: "elderlycareapp-35250.firebaseapp.com",
       projectId: "elderlycareapp-35250",
       storageBucket: "elderlycareapp-35250.firebasestorage.app",
       messagingSenderId: "1001240832274",
       appId: "1:1001240832274:web:4f01f16828a9a6fb35ebcb"
-};
-firebase.initializeApp(firebaseConfig);
-</script>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
 
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
+  <!-- OneSignal Web SDK -->
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    window.OneSignalDeferred.push(function(OneSignal) {
+      console.log("OneSignal SDK loaded");
 
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+      // Check if running on a secure context
+      console.log("Is secure context:", window.isSecureContext);
+      console.log("Current origin:", window.location.origin);
 
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
+      OneSignal.init({
+        appId: "b00dcbca-ae9e-4275-b465-20370bb2a03f",
+        safari_web_id: "web.onesignal.auto.0f1b3c4d-1e2a-4b5c-9d8e-0f1b3c4d1e2a",
+        autoResubscribe: true,
+        notifyButton: {
+          enable: true,
+          size: 'medium',
+          theme: 'default',
+          position: 'bottom-right',
+          text: {
+            'tip.state.unsubscribed': 'Subscribe to notifications',
+            'tip.state.subscribed': "You're subscribed to notifications",
+            'tip.state.blocked': "You've blocked notifications",
+            'message.prenotify': 'Click to subscribe to notifications',
+            'message.action.subscribed': "Thanks for subscribing!",
+            'message.action.resubscribed': "You're subscribed to notifications",
+            'message.action.unsubscribed': "You won't receive notifications again",
+            'dialog.main.title': 'Manage Site Notifications',
+            'dialog.main.button.subscribe': 'SUBSCRIBE',
+            'dialog.main.button.unsubscribe': 'UNSUBSCRIBE',
+            'dialog.blocked.title': 'Unblock Notifications',
+            'dialog.blocked.message': 'Follow these instructions to allow notifications:'
+          }
+        },
+        welcomeNotification: {
+          "title": "Welcome to Elderly Care!",
+          "message": "Thanks for subscribing to notifications!"
+        },
+        allowLocalhostAsSecureOrigin: true // For local testing
+      }).then(() => {
+        console.log("OneSignal initialized successfully");
+        console.log("Notification permission:", OneSignal.Notifications.permission);
+        console.log("Is push supported:", OneSignal.Notifications.isPushSupported());
+        console.log("User subscription opted in:", OneSignal.User.PushSubscription.optedIn);
+
+        // Check if notifications are blocked at the browser level
+        if (!OneSignal.Notifications.permission) {
+          console.log("Notifications are not allowed at the browser level");
+        }
+
+        // Check if the user has previously unsubscribed
+        if (OneSignal.User.PushSubscription.optedIn) {
+          console.log("User already opted in to push notifications");
+          fetchAndSendUserId();
+        } else {
+          console.log("Push notifications not enabled, showing slidedown prompt");
+          OneSignal.Slidedown.promptPush().then(() => {
+            console.log("Slidedown prompt displayed successfully");
+          }).catch((error) => {
+            console.error("Error showing slidedown prompt:", error);
+            console.log("Falling back to notify button...");
+          });
+        }
+      }).catch((error) => {
+        console.error("Error initializing OneSignal:", error);
+      });
+
+      // Function to fetch and send user ID
+      function fetchAndSendUserId() {
+        console.log("Checking OneSignal subscription state...");
+        console.log("Opted in:", OneSignal.User.PushSubscription.optedIn);
+        const userId = OneSignal.User.PushSubscription.id;
+        if (userId) {
+          console.log('OneSignal User ID:', userId);
+          window.saveOneSignalUserId(userId);
+        } else {
+          console.log('No OneSignal User ID available, retrying...');
+          setTimeout(fetchAndSendUserId, 2000); // Retry every 2 seconds
+        }
+      }
+
+      OneSignal.User.PushSubscription.addEventListener('change', function(isSubscribed) {
+        console.log("Push subscription changed:", isSubscribed);
+        if (isSubscribed.optedIn) {
+          fetchAndSendUserId();
+        }
+      });
+
+      OneSignal.Notifications.addEventListener('permissionChange', function(permission) {
+        console.log('Notification permission changed:', permission);
+        if (permission) {
+          fetchAndSendUserId();
+        }
+      });
+
+      // Fallback: Start fetching user ID after a delay
+      setTimeout(fetchAndSendUserId, 5000); // Start after 5 seconds
+    });
+
+    window.saveOneSignalUserId = function(userId) {
+      console.log("Saving OneSignal User ID to Flutter:", userId);
+      if (window.flutter_injected) {
+        window.flutter_injected.postMessage(JSON.stringify({
+          type: 'oneSignalUserId',
+          userId: userId
+        }));
+      } else {
+        console.log("Flutter bridge not available yet, retrying...");
+        setTimeout(() => window.saveOneSignalUserId(userId), 2000);
+      }
+    };
+  </script>
+
   <base href="$FLUTTER_BASE_HREF">
-
-  <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
-
-  <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="elderly_care_app">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
-
-  <title>elderly_care_app</title>
-  <link rel="manifest" href="manifest.json">
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

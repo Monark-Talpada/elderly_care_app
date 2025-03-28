@@ -3,6 +3,7 @@ import 'package:elderly_care_app/models/family_model.dart';
 import 'package:elderly_care_app/models/senior_model.dart';
 import 'package:elderly_care_app/models/volunteer_model.dart';
 import 'package:elderly_care_app/models/user_model.dart';
+import 'package:elderly_care_app/services/notification_service.dart'; // Import NotificationService
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,27 +11,29 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AuthService extends ChangeNotifier {
   final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  
+
   User? _currentUser;
-  
+
   User? get currentUser => _currentUser;
   bool get isLoggedIn => _currentUser != null;
-  
+
   AuthService() {
     _auth.authStateChanges().listen(_onAuthStateChanged);
     _checkSavedLogin(); // Check for saved login on initialization
   }
-  
-  // New method to check for saved login credentials
+
+  // Check for saved login credentials
   Future<void> _checkSavedLogin() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
-      
+
       if (isLoggedIn) {
         final firebaseUser = _auth.currentUser;
         if (firebaseUser != null) {
           await _fetchUserData(firebaseUser);
+          // In methods like signIn, register, createSeniorProfile, etc.
+NotificationService().onUserLogin(_currentUser!.id); // Save OneSignal ID if logged in
         }
       }
     } catch (e) {
@@ -39,33 +42,88 @@ class AuthService extends ChangeNotifier {
       }
     }
   }
-  
+
   Future<void> _onAuthStateChanged(firebase_auth.User? firebaseUser) async {
-    if (firebaseUser == null) {
+  if (firebaseUser == null) {
+    _currentUser = null;
+    notifyListeners();
+    return;
+  }
+
+  try {
+    DocumentSnapshot userDoc = await _firestore
+        .collection('users')
+        .doc(firebaseUser.uid)
+        .get();
+
+    if (userDoc.exists) {
+      Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
+      String userType = data['userType'] ?? '';
+
+      // Ensure OneSignal user ID is added during auth state change
+      await _ensureOneSignalUserIdExists(firebaseUser.uid);
+
+      // Rest of the existing code remains the same...
+    } else {
       _currentUser = null;
-      notifyListeners();
-      return;
     }
+
+    notifyListeners();
+
+    // Save OneSignal ID when auth state changes and user is set
+    if (_currentUser != null) {
+// In methods like signIn, register, createSeniorProfile, etc.
+NotificationService().onUserLogin(_currentUser!.id);
+      _saveLoginState(firebaseUser.uid, firebaseUser.email ?? '');
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      print('Error fetching user data: $e');
+    }
+    _currentUser = null;
+    notifyListeners();
+  }
+}
+
+// New method to ensure OneSignal user ID exists
+Future<void> _ensureOneSignalUserIdExists(String userId) async {
+  try {
+    final userDoc = await _firestore.collection('users').doc(userId).get();
     
+    if (userDoc.exists) {
+      final userData = userDoc.data() ?? {};
+      
+      // If OneSignal user ID is not present, initialize it
+      if (userData['oneSignalUserId'] == null) {
+        // Trigger OneSignal user ID generation and saving
+// In methods like signIn, register, createSeniorProfile, etc.
+NotificationService().onUserLogin(_currentUser!.id);      }
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      print('Error ensuring OneSignal user ID: $e');
+    }
+  }
+}
+
+  Future<void> _fetchUserData(firebase_auth.User firebaseUser) async {
     try {
       DocumentSnapshot userDoc = await _firestore
           .collection('users')
           .doc(firebaseUser.uid)
           .get();
-      
+
       if (userDoc.exists) {
         Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
         String userType = data['userType'] ?? '';
-        
+
         if (userType == 'senior') {
-          // Get additional data from seniors collection if needed
           DocumentSnapshot seniorDoc = await _firestore
               .collection('seniors')
               .doc(firebaseUser.uid)
               .get();
-              
+
           if (seniorDoc.exists) {
-            // Merge data from both documents if needed
             Map<String, dynamic> seniorData = seniorDoc.data() as Map<String, dynamic>;
             Map<String, dynamic> mergedData = {...data, ...seniorData};
             _currentUser = SeniorCitizen.fromMap(mergedData, userDoc.id);
@@ -73,14 +131,12 @@ class AuthService extends ChangeNotifier {
             _currentUser = SeniorCitizen.fromFirestore(userDoc);
           }
         } else if (userType == 'family') {
-          // Get additional data from family_member collection if needed
           DocumentSnapshot familyDoc = await _firestore
               .collection('family_member')
               .doc(firebaseUser.uid)
               .get();
-              
+
           if (familyDoc.exists) {
-            // Merge data from both documents if needed
             Map<String, dynamic> familyData = familyDoc.data() as Map<String, dynamic>;
             Map<String, dynamic> mergedData = {...data, ...familyData};
             _currentUser = FamilyMember.fromMap(mergedData, userDoc.id);
@@ -88,14 +144,12 @@ class AuthService extends ChangeNotifier {
             _currentUser = FamilyMember.fromFirestore(userDoc);
           }
         } else if (userType == 'volunteer') {
-          // Get additional data from volunteers collection if needed
           DocumentSnapshot volunteerDoc = await _firestore
               .collection('volunteers')
               .doc(firebaseUser.uid)
               .get();
-              
+
           if (volunteerDoc.exists) {
-            // Merge data from both documents if needed
             Map<String, dynamic> volunteerData = volunteerDoc.data() as Map<String, dynamic>;
             Map<String, dynamic> mergedData = {...data, ...volunteerData};
             _currentUser = Volunteer.fromMap(mergedData, userDoc.id);
@@ -108,10 +162,9 @@ class AuthService extends ChangeNotifier {
       } else {
         _currentUser = null;
       }
-      
+
       notifyListeners();
-      
-      // Save login state to SharedPreferences
+
       if (_currentUser != null) {
         _saveLoginState(firebaseUser.uid, firebaseUser.email ?? '');
       }
@@ -124,7 +177,6 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  // New method to save login state
   Future<void> _saveLoginState(String userId, String email) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -138,110 +190,31 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  Future<void> _fetchUserData(firebase_auth.User firebaseUser) async {
-    try {
-      DocumentSnapshot userDoc = await _firestore
-          .collection('users')
-          .doc(firebaseUser.uid)
-          .get();
-    
-      if (userDoc.exists) {
-        Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
-        String userType = data['userType'] ?? '';
-        
-        if (userType == 'senior') {
-          // Get additional data from seniors collection if needed
-          DocumentSnapshot seniorDoc = await _firestore
-              .collection('seniors')
-              .doc(firebaseUser.uid)
-              .get();
-              
-          if (seniorDoc.exists) {
-            // Merge data from both documents if needed
-            Map<String, dynamic> seniorData = seniorDoc.data() as Map<String, dynamic>;
-            Map<String, dynamic> mergedData = {...data, ...seniorData};
-            _currentUser = SeniorCitizen.fromMap(mergedData, userDoc.id);
-          } else {
-            _currentUser = SeniorCitizen.fromFirestore(userDoc);
-          }
-        } else if (userType == 'family') {
-          // Get additional data from family_member collection if needed
-          DocumentSnapshot familyDoc = await _firestore
-              .collection('family_member')
-              .doc(firebaseUser.uid)
-              .get();
-              
-          if (familyDoc.exists) {
-            // Merge data from both documents if needed
-            Map<String, dynamic> familyData = familyDoc.data() as Map<String, dynamic>;
-            Map<String, dynamic> mergedData = {...data, ...familyData};
-            _currentUser = FamilyMember.fromMap(mergedData, userDoc.id);
-          } else {
-            _currentUser = FamilyMember.fromFirestore(userDoc);
-          }
-        } else if (userType == 'volunteer') {
-          // Get additional data from volunteers collection if needed
-          DocumentSnapshot volunteerDoc = await _firestore
-              .collection('volunteers')
-              .doc(firebaseUser.uid)
-              .get();
-              
-          if (volunteerDoc.exists) {
-            // Merge data from both documents if needed
-            Map<String, dynamic> volunteerData = volunteerDoc.data() as Map<String, dynamic>;
-            Map<String, dynamic> mergedData = {...data, ...volunteerData};
-            _currentUser = Volunteer.fromMap(mergedData, userDoc.id);
-          } else {
-            _currentUser = Volunteer.fromFirestore(userDoc);
-          }
-        } else {
-          _currentUser = User.fromFirestore(userDoc);
-        }
-      } else {
-        _currentUser = null;
-      }
-      
-      notifyListeners();
-      
-      // Save login state when fetching user data
-      if (_currentUser != null) {
-        _saveLoginState(firebaseUser.uid, firebaseUser.email ?? '');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error fetching user data: $e');
-      }
-      _currentUser = null;
-      notifyListeners();
-    }
-  }
-  
   Future<User?> signIn(String email, String password) async {
     try {
       // Clear current user state first
       _currentUser = null;
-      
-      // Sign in with Firebase Auth
+
       final userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-      
-      // Get the Firebase user
+
       final firebaseUser = userCredential.user;
       if (firebaseUser == null) {
         return null;
       }
-      
-      // Manually fetch user data rather than waiting for the listener
+
       await _fetchUserData(firebaseUser);
-      
-      // Save login state after successful sign in
+
+      // Save OneSignal ID after successful sign-in
+      // In methods like signIn, register, createSeniorProfile, etc.
+NotificationService().onUserLogin(_currentUser!.id);
+
       if (_currentUser != null) {
         await _saveLoginState(firebaseUser.uid, email);
       }
-      
-      // Return the now-populated _currentUser
+
       return _currentUser;
     } catch (e) {
       if (kDebugMode) {
@@ -250,7 +223,7 @@ class AuthService extends ChangeNotifier {
       return null;
     }
   }
-  
+
   Future<User?> register({
     required String email,
     required String password,
@@ -259,16 +232,15 @@ class AuthService extends ChangeNotifier {
     String? phoneNumber,
   }) async {
     try {
-      final firebase_auth.UserCredential result = 
+      final firebase_auth.UserCredential result =
           await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
-      
+
       final firebase_auth.User? firebaseUser = result.user;
-      
+
       if (firebaseUser != null) {
-        // Create the user document
         final userData = User(
           id: firebaseUser.uid,
           email: email,
@@ -277,26 +249,27 @@ class AuthService extends ChangeNotifier {
           phoneNumber: phoneNumber,
           createdAt: DateTime.now(),
         );
-        
+
         await _firestore
             .collection('users')
             .doc(firebaseUser.uid)
             .set(userData.toMap());
-        
-        // Update the current user
+
         _currentUser = userData;
         notifyListeners();
-        
-        // Save login state after registration
+
+        // Save OneSignal ID after registration
+        // In methods like signIn, register, createSeniorProfile, etc.
+NotificationService().onUserLogin(_currentUser!.id);
+
         await _saveLoginState(firebaseUser.uid, email);
-        
+
         return userData;
       }
-      
+
       return null;
     } catch (e) {
       if (e is firebase_auth.FirebaseAuthException && e.code == 'email-already-in-use') {
-        // Display user-friendly message
         if (kDebugMode) {
           print('Email already in use. Please use a different email or sign in.');
         }
@@ -308,18 +281,17 @@ class AuthService extends ChangeNotifier {
       return null;
     }
   }
-  
+
   Future<void> signOut() async {
     try {
       await _auth.signOut();
       _currentUser = null;
-      
-      // Clear login state from SharedPreferences
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('is_logged_in', false);
       await prefs.remove('user_id');
       await prefs.remove('user_email');
-      
+
       notifyListeners();
     } catch (e) {
       if (kDebugMode) {
@@ -330,41 +302,43 @@ class AuthService extends ChangeNotifier {
 
   Future<SeniorCitizen?> createSeniorProfile(String userId) async {
     try {
-      // Update the user type in users collection
       await _firestore.collection('users').doc(userId).update({
         'userType': 'senior',
       });
-      
-      // Create entry in seniors collection
+
       await _firestore.collection('seniors').doc(userId).set({
         'userId': userId,
         'connectedFamilyIds': [],
         'emergencyModeActive': false,
         'lastLocationUpdate': FieldValue.serverTimestamp(),
       });
-      
-      // Fetch the updated user data
+
       DocumentSnapshot userDoc = await _firestore
           .collection('users')
           .doc(userId)
           .get();
-      
+
       DocumentSnapshot seniorDoc = await _firestore
           .collection('seniors')
           .doc(userId)
           .get();
-      
+
       if (userDoc.exists && seniorDoc.exists) {
         Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
         Map<String, dynamic> seniorData = seniorDoc.data() as Map<String, dynamic>;
         Map<String, dynamic> mergedData = {...userData, ...seniorData};
-        
+
         final senior = SeniorCitizen.fromMap(mergedData, userId);
         _currentUser = senior;
         notifyListeners();
+
+        // Save OneSignal ID after profile creation
+        // In methods like signIn, register, createSeniorProfile, etc.
+NotificationService().onUserLogin(_currentUser!.id);
+
         return senior;
       }
-      
+
       return null;
     } catch (e) {
       if (e is FirebaseException && e.code == 'permission-denied') {
@@ -382,39 +356,41 @@ class AuthService extends ChangeNotifier {
 
   Future<FamilyMember?> createFamilyProfile(String userId) async {
     try {
-      // Update the user type in users collection
       await _firestore.collection('users').doc(userId).update({
         'userType': 'family',
       });
-      
-      // Create entry in family_member collection
+
       await _firestore.collection('family_member').doc(userId).set({
         'userId': userId,
         'connectedSeniorIds': [],
       });
-      
-      // Fetch the updated user data
+
       DocumentSnapshot userDoc = await _firestore
           .collection('users')
           .doc(userId)
           .get();
-      
+
       DocumentSnapshot familyDoc = await _firestore
           .collection('family_member')
           .doc(userId)
           .get();
-      
+
       if (userDoc.exists && familyDoc.exists) {
         Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
         Map<String, dynamic> familyData = familyDoc.data() as Map<String, dynamic>;
         Map<String, dynamic> mergedData = {...userData, ...familyData};
-        
+
         final family = FamilyMember.fromMap(mergedData, userId);
         _currentUser = family;
         notifyListeners();
+
+        // Save OneSignal ID after profile creation
+        // In methods like signIn, register, createSeniorProfile, etc.
+NotificationService().onUserLogin(_currentUser!.id);
+
         return family;
       }
-      
+
       return null;
     } catch (e) {
       if (e is FirebaseException && e.code == 'permission-denied') {
@@ -423,7 +399,7 @@ class AuthService extends ChangeNotifier {
         }
       } else {
         if (kDebugMode) {
-          print('Error creating senior profile: $e');
+          print('Error creating family profile: $e');
         }
       }
       return null;
@@ -437,47 +413,48 @@ class AuthService extends ChangeNotifier {
         if (kDebugMode) {
           print('User document does not exist. Creating user first...');
         }
-        // Create a basic user document if it doesn't exist
         await _firestore.collection('users').doc(userId).set({
           'userType': 'volunteer',
           'createdAt': FieldValue.serverTimestamp(),
         });
       }
-      
-      // Update the user type in users collection
+
       await _firestore.collection('users').doc(userId).update({
         'userType': 'volunteer',
       });
-      
-      // Create entry in volunteers collection
+
       await _firestore.collection('volunteers').doc(userId).set({
         'userId': userId,
         'availability': {},
         'totalHoursVolunteered': 0,
       });
-      
-      // Fetch the updated user data
+
       userDoc = await _firestore
           .collection('users')
           .doc(userId)
           .get();
-    
+
       DocumentSnapshot volunteerDoc = await _firestore
           .collection('volunteers')
           .doc(userId)
           .get();
-      
+
       if (userDoc.exists && volunteerDoc.exists) {
         Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
         Map<String, dynamic> volunteerData = volunteerDoc.data() as Map<String, dynamic>;
         Map<String, dynamic> mergedData = {...userData, ...volunteerData};
-        
+
         final volunteer = Volunteer.fromMap(mergedData, userId);
         _currentUser = volunteer;
         notifyListeners();
+
+        // Save OneSignal ID after profile creation
+        // In methods like signIn, register, createSeniorProfile, etc.
+NotificationService().onUserLogin(_currentUser!.id);
+
         return volunteer;
       }
-      
+
       return null;
     } catch (e) {
       if (e is FirebaseException && e.code == 'permission-denied') {
@@ -486,46 +463,43 @@ class AuthService extends ChangeNotifier {
         }
       } else {
         if (kDebugMode) {
-          print('Error creating senior profile: $e');
+          print('Error creating volunteer profile: $e');
         }
       }
       return null;
     }
   }
-  
+
   Future<bool> connectSeniorWithEmail(String seniorEmail) async {
     if (_currentUser == null || _currentUser!.userType != UserType.family) {
       return false;
     }
-    
+
     try {
-      // Find the senior with the provided email
       final QuerySnapshot seniorQuery = await _firestore
           .collection('users')
           .where('email', isEqualTo: seniorEmail)
           .where('userType', isEqualTo: 'senior')
           .limit(1)
           .get();
-          
+
       if (seniorQuery.docs.isEmpty) {
         return false;
       }
-      
+
       final String seniorId = seniorQuery.docs.first.id;
-      
-      // Update the family member's connected seniors in family_member collection
+
       final FamilyMember family = _currentUser as FamilyMember;
       if (!family.connectedSeniorIds.contains(seniorId)) {
         await _firestore.collection('family_member').doc(family.id).update({
           'connectedSeniorIds': FieldValue.arrayUnion([seniorId]),
         });
       }
-      
-      // Update the senior's connected family members in seniors collection
+
       await _firestore.collection('seniors').doc(seniorId).update({
         'connectedFamilyIds': FieldValue.arrayUnion([family.id]),
       });
-      
+
       return true;
     } catch (e) {
       if (kDebugMode) {
@@ -557,20 +531,19 @@ class AuthService extends ChangeNotifier {
       return false;
     }
   }
-  
-  // New method to initialize auth state on app start
+
   Future<void> initializeAuth() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
-      
+
       if (isLoggedIn) {
         final firebaseUser = _auth.currentUser;
         if (firebaseUser != null) {
           await _fetchUserData(firebaseUser);
+          // In methods like signIn, register, createSeniorProfile, etc.
+NotificationService().onUserLogin(_currentUser!.id); // Save OneSignal ID on init
         } else {
-          // User data in SharedPreferences but not in Firebase Auth
-          // Clear invalid login state
           await prefs.setBool('is_logged_in', false);
         }
       }
