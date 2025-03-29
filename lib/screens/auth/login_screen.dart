@@ -292,16 +292,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
                   Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {
-                        // TODO: Implement forgot password
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Forgot password feature coming soon')),
-                        );
-                      },
-                      child: const Text('Forgot Password?'),
-                    ),
+                    // alignment: Alignment.centerRight,
+                    // child: TextButton(
+                    //   onPressed: () {
+                    //     // TODO: Implement forgot password
+                    //     ScaffoldMessenger.of(context).showSnackBar(
+                    //       const SnackBar(content: Text('Forgot password feature coming soon')),
+                    //     );
+                    //   },
+                    //   child: const Text('Forgot Password?'),
+                    // ),
                   ),
                   if (_errorMessage != null) ...[
                     const SizedBox(height: 8),
