@@ -40,7 +40,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     // Check password match
-    if (_passwordController.text.trim() != _confirmPasswordController.text.trim()) {
+    if (_passwordController.text.trim() !=
+        _confirmPasswordController.text.trim()) {
       setState(() {
         _errorMessage = 'Passwords do not match';
       });
@@ -56,7 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     try {
       // Safely get AuthService using Provider
       final authService = Provider.of<AuthService>(context, listen: false);
-      
+
       // Attempt registration
       final user = await authService.register(
         email: _emailController.text.trim(),
@@ -103,16 +104,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Ensure the image path is correct
-                  Image.asset(
-                    'assets/images/register.png',
-                    height: 150,
-                    errorBuilder: (context, error, stackTrace) {
-                      print('Image load error: $error');
-                      return Icon(Icons.error, size: 150);
-                    },
-                  ),
-                  const SizedBox(height: 20),
                   const Text(
                     'Create an Account',
                     style: TextStyle(
@@ -129,21 +120,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 32),
                   _buildTextField(_nameController, 'Full Name', Icons.person),
-                  _buildTextField(_emailController, 'Email', Icons.email, 
-                    keyboardType: TextInputType.emailAddress),
-                  _buildTextField(_phoneController, 'Phone Number', Icons.phone, 
-                    keyboardType: TextInputType.phone),
-                  _buildPasswordField(
-                    _passwordController, 
-                    'Password', 
-                    _isPasswordVisible, 
-                    () => setState(() => _isPasswordVisible = !_isPasswordVisible)
+                  _buildTextField(
+                    _emailController,
+                    'Email',
+                    Icons.email,
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  _buildTextField(
+                    _phoneController,
+                    'Phone Number',
+                    Icons.phone,
+                    keyboardType: TextInputType.phone,
                   ),
                   _buildPasswordField(
-                    _confirmPasswordController, 
-                    'Confirm Password', 
-                    _isConfirmPasswordVisible, 
-                    () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible)
+                    _passwordController,
+                    'Password',
+                    _isPasswordVisible,
+                    () => setState(
+                      () => _isPasswordVisible = !_isPasswordVisible,
+                    ),
+                  ),
+                  _buildPasswordField(
+                    _confirmPasswordController,
+                    'Confirm Password',
+                    _isConfirmPasswordVisible,
+                    () => setState(
+                      () =>
+                          _isConfirmPasswordVisible =
+                              !_isConfirmPasswordVisible,
+                    ),
                   ),
                   if (_errorMessage != null) ...[
                     const SizedBox(height: 16),
@@ -162,23 +167,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         backgroundColor: Colors.blueAccent,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                            'Register', 
-                            style: TextStyle(fontSize: 16, color: Colors.white)
-                          ),
+                      child:
+                          _isLoading
+                              ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
+                              : const Text(
+                                'Register',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                ),
+                              ),
                     ),
                   ),
                   const SizedBox(height: 16),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     child: const Text(
-                      'Already have an account? Sign In', 
-                      style: TextStyle(color: Colors.blueAccent)
+                      'Already have an account? Sign In',
+                      style: TextStyle(color: Colors.blueAccent),
                     ),
                   ),
                 ],
@@ -191,11 +202,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildTextField(
-    TextEditingController controller, 
-    String label, 
-    IconData icon, 
-    {TextInputType keyboardType = TextInputType.text}
-  ) {
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    TextInputType keyboardType = TextInputType.text,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: TextFormField(
@@ -210,7 +221,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           if (value == null || value.isEmpty) {
             return 'Please enter $label';
           }
-          
+
           // Email validation
           if (label == 'Email') {
             final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
@@ -218,7 +229,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               return 'Please enter a valid email address';
             }
           }
-          
+
           // Phone number validation (basic)
           if (label == 'Phone Number') {
             final phoneRegex = RegExp(r'^[0-9]{10}$');
@@ -226,7 +237,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               return 'Please enter a valid 10-digit phone number';
             }
           }
-          
+
           return null;
         },
       ),
@@ -234,10 +245,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildPasswordField(
-    TextEditingController controller, 
-    String label, 
-    bool isVisible, 
-    VoidCallback toggleVisibility
+    TextEditingController controller,
+    String label,
+    bool isVisible,
+    VoidCallback toggleVisibility,
   ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -250,8 +261,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           prefixIcon: const Icon(Icons.lock, color: Colors.blueAccent),
           suffixIcon: IconButton(
             icon: Icon(
-              isVisible ? Icons.visibility : Icons.visibility_off, 
-              color: Colors.blueAccent
+              isVisible ? Icons.visibility : Icons.visibility_off,
+              color: Colors.blueAccent,
             ),
             onPressed: toggleVisibility,
           ),
@@ -260,7 +271,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           if (value == null || value.isEmpty) {
             return 'Please enter $label';
           }
-          
+
           // Password strength validation
           if (label == 'Password') {
             if (value.length < 8) {
@@ -276,7 +287,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               return 'Password must contain a number';
             }
           }
-          
+
           return null;
         },
       ),
