@@ -89,7 +89,7 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
         title: const Text('Family Dashboard'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.person), // changed from Icons.settings
+            icon: const Icon(Icons.person),   
             onPressed: () {
               Navigator.push(
                 context,
