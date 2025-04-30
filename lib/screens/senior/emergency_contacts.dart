@@ -4,6 +4,7 @@ import 'package:elderly_care_app/models/senior_model.dart';
 import 'package:elderly_care_app/models/family_model.dart';
 import 'package:elderly_care_app/services/database_service.dart';
 import 'package:elderly_care_app/services/auth_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class EmergencyContactsScreen extends StatefulWidget {
   const EmergencyContactsScreen({Key? key}) : super(key: key);
@@ -175,69 +176,70 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     );
   }
 
-  Widget _buildEmergencyContactsList() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _emergencyContacts.length,
-      itemBuilder: (context, index) {
-        final contact = _emergencyContacts[index];
-        return Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          margin: const EdgeInsets.only(bottom: 16),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundImage: contact.photoUrl != null 
-                  ? NetworkImage(contact.photoUrl!)
-                  : null,
-              child: contact.photoUrl == null
-                  ? Text(contact.name.substring(0, 1).toUpperCase())
-                  : null,
+    Widget _buildEmergencyContactsList() {
+      return ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _emergencyContacts.length,
+        itemBuilder: (context, index) {
+          final contact = _emergencyContacts[index];
+          return Card(
+            elevation: 4,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-            title: Text(
-              contact.name,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
+            margin: const EdgeInsets.only(bottom: 16),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundImage: contact.photoUrl != null
+                    ? NetworkImage(contact.photoUrl!)
+                    : null,
+                child: contact.photoUrl == null
+                    ? Text(contact.name.substring(0, 1).toUpperCase())
+                    : null,
+              ),
+              title: Text(
+                contact.name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (contact.relationship != null)
+                    Text(
+                      contact.relationship!,
+                      style: TextStyle(color: Colors.grey[600]),
+                    ),
+                  Text(
+                    contact.phoneNumber ?? 'No phone number',
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                ],
+              ),
+              trailing: IconButton(
+                icon: const Icon(Icons.call, color: Colors.green),
+                onPressed: contact.phoneNumber != null
+                    ? () => _launchCall(contact.phoneNumber!)
+                    : null,
               ),
             ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (contact.relationship != null)
-                  Text(
-                    contact.relationship!,
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                Text(
-                  contact.phoneNumber ?? 'No phone number',
-                  style: TextStyle(color: Colors.grey[700]),
-                ),
-              ],
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.call, color: Colors.green),
-                  onPressed: contact.phoneNumber != null
-                      ? () => _callContact(contact.phoneNumber!)
-                      : null,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.message, color: Colors.blue),
-                  onPressed: contact.phoneNumber != null
-                      ? () => _sendSMS(contact.phoneNumber!)
-                      : null,
-                ),
-              ],
-            ),
-          ),
+          );
+        },
+      );
+    }
+
+    void _launchCall(String phoneNumber) async {
+      final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+      if (await canLaunchUrl(phoneUri)) {
+        await launchUrl(phoneUri);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open dialer')),
         );
-      },
-    );
-  }
+      }
+    }
+
 
   void _addEmergencyContact() {
     // Navigate to a screen to add a new emergency contact
