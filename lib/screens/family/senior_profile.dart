@@ -360,15 +360,6 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                     child: Column(
                       children: [
                         _buildInfoRow(
-                          icon: Icons.sensors,
-                          title: 'Fall Detection',
-                          value: widget.senior.fallDetectionEnabled ? 'Enabled' : 'Disabled',
-                          valueColor: widget.senior.fallDetectionEnabled
-                              ? Colors.green
-                              : Colors.red,
-                        ),
-                        const Divider(),
-                        _buildInfoRow(
                           icon: Icons.family_restroom,
                           title: 'Connected Family Members',
                           value: '${widget.senior.connectedFamilyIds.length}',
