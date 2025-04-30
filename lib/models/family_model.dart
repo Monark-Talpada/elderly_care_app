@@ -60,18 +60,26 @@ class FamilyMember extends User {
   }
   
   @override
-  Map<String, dynamic> toMap() {
-    final Map<String, dynamic> data = super.toMap();
-    data.addAll({
-      'connectedSeniorIds': connectedSeniorIds,
-      'notificationsEnabled': notificationsEnabled,
-      'relationship': relationship,
-      'notificationPreferences': notificationPreferences,
-    });
-    return data;
-  }
+Map<String, dynamic> toMap() {
+  return {
+    'id': id,
+    'email': email,
+    'name': name,
+    'photoUrl': photoUrl,
+    'phoneNumber': phoneNumber,
+    'createdAt': createdAt,
+    'userType': userType.name,
+    'connectedSeniorIds': connectedSeniorIds,
+    'notificationsEnabled': notificationsEnabled,
+    'relationship': relationship,
+    'notificationPreferences': notificationPreferences,
+  };
+}
+
   
-  FamilyMember copyWith({
+    FamilyMember copyWith({
+    String? name,
+    String? phoneNumber,
     List<String>? connectedSeniorIds,
     bool? notificationsEnabled,
     String? relationship,
@@ -80,9 +88,9 @@ class FamilyMember extends User {
     return FamilyMember(
       id: id,
       email: email,
-      name: name,
+      name: name ?? this.name,
       photoUrl: photoUrl,
-      phoneNumber: phoneNumber,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
       createdAt: createdAt,
       connectedSeniorIds: connectedSeniorIds ?? this.connectedSeniorIds,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,

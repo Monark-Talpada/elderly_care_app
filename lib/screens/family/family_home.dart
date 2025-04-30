@@ -2,6 +2,7 @@ import 'package:elderly_care_app/models/need_model.dart';
 import 'package:elderly_care_app/models/family_model.dart';
 import 'package:elderly_care_app/models/senior_model.dart';
 import 'package:elderly_care_app/screens/family/connect_senior.dart';
+import 'package:elderly_care_app/screens/family/family_profile.dart';
 import 'package:elderly_care_app/screens/family/emergency_map.dart';
 import 'package:elderly_care_app/screens/family/senior_profile.dart';
 import 'package:elderly_care_app/services/auth_service.dart';
@@ -80,37 +81,7 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
   }
 }
 
-  Future<void> _toggleNotifications() async {
-    try {
-      final dbService = Provider.of<DatabaseService>(context, listen: false);
-      final updatedFamily = widget.family.copyWith(
-        notificationsEnabled: !widget.family.notificationsEnabled,
-      );
-      
-      // Use the updateFamilyMember method from database_service.dart
-      final success = await dbService.updateFamilyMember(updatedFamily);
-      
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Notifications ${updatedFamily.notificationsEnabled ? 'enabled' : 'disabled'}',
-            ),
-          ),
-        );
-        
-        // Reload data
-        _loadData();
-      } else {
-        throw Exception('Failed to update notification settings');
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating settings: ${e.toString()}')),
-      );
-    }
-  }
-
+ 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -118,13 +89,16 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
         title: const Text('Family Dashboard'),
         actions: [
           IconButton(
-            icon: Icon(
-              widget.family.notificationsEnabled
-                  ? Icons.notifications_active
-                  : Icons.notifications_off,
-            ),
-            onPressed: _toggleNotifications,
-            tooltip: 'Toggle Notifications',
+            icon: const Icon(Icons.person), // changed from Icons.settings
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FamilyProfileScreen(family: widget.family),
+                ),
+              );
+            },
+            tooltip: 'Profile',
           ),
           IconButton(
             icon: const Icon(Icons.logout),
