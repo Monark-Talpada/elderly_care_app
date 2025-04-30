@@ -38,6 +38,8 @@ class _FamilyProfileScreenState extends State<FamilyProfileScreen> {
     }
   }
 
+  
+
   void _initializeFromMember(FamilyMember member) {
     _familyMember = member;
     _nameController = TextEditingController(text: member.name);
@@ -66,6 +68,7 @@ class _FamilyProfileScreenState extends State<FamilyProfileScreen> {
     }
   }
 
+
  Future<void> _saveChanges() async {
   if (_familyMember == null) return;
 
@@ -87,6 +90,7 @@ class _FamilyProfileScreenState extends State<FamilyProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Profile updated successfully')),
       );
+        Navigator.pop(context, updatedMember);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to update profile')),

@@ -121,9 +121,9 @@ class MyApp extends StatelessWidget {
         return ConnectSeniorScreen(family: args);
       },
 
-       '/family/profile': (context) => FamilyConnectionsScreen(),
+       
 
-      '/family/senior_profile': (context) {
+      '/family/family_profile': (context) {
         final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
         return SeniorProfileScreen(
           senior: args['senior'] as SeniorCitizen, 
@@ -144,6 +144,8 @@ class MyApp extends StatelessWidget {
         return AddNeedScreen(need: need);
       },
       '/senior/profile': (context) => SeniorProfile(),
+
+      '/family/profile': (context) => FamilyProfileScreen(),
       
       '/senior/select_volunteer': (context) => const SelectVolunteerScreen(),
 

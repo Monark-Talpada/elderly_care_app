@@ -91,14 +91,8 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
           IconButton(
             icon: const Icon(Icons.person),   
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => FamilyProfileScreen(family: widget.family),
-                ),
-              );
+                Navigator.pushNamed(context, '/family/profile');
             },
-            tooltip: 'Profile',
           ),
           IconButton(
             icon: const Icon(Icons.logout),

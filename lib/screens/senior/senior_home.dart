@@ -156,7 +156,7 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
             icon: const Icon(Icons.person),
             onPressed: () {
               Navigator.pushNamed(context, '/senior/profile');
-            },
+            },  
           ),
           IconButton(
             icon: const Icon(Icons.logout),
