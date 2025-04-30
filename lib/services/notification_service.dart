@@ -1,7 +1,11 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/material.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
+import 'package:elderly_care_app/models/senior_model.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -38,17 +42,55 @@ class NotificationService {
     }
   }
 
-  void _handleNotificationClick(Map<String, dynamic> payload) {
-    if (payload.containsKey('emergency')) {
-      String seniorId = payload['senior_id'] ?? '';
-      String location = payload['location'] ?? 'unknown';
-      if (kDebugMode) {
-        print('Should navigate to emergency map for senior $seniorId at location $location');
-      }
-      // TODO: Implement navigation logic
-    }
-  }
+  // Add this to your NotificationService class
 
+// Helper method to navigate to emergency map with a senior's ID
+Future<void> navigateToEmergencyMap(String seniorId) async {
+  print('🚑 Emergency navigation requested for senior: $seniorId');
+  
+  try {
+    // Fetch senior data from Firestore
+    DocumentSnapshot seniorDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(seniorId)
+        .get();
+    
+    if (seniorDoc.exists) {
+      // Convert to SeniorCitizen object
+      SeniorCitizen senior = SeniorCitizen.fromFirestore(seniorDoc);
+      
+      // Navigate to emergency map
+      navigatorKey.currentState?.pushNamed(
+        '/family/emergency_map',
+        arguments: [senior],
+      );
+      
+      print('✅ Successfully navigated to emergency map');
+      return;
+    } else {
+      print('❌ Senior document not found');
+    }
+  } catch (e) {
+    print('🚨 Error navigating to emergency map: $e');
+  }
+  
+  // If we get here, something went wrong
+  print('⚠️ Fallback: Attempting direct navigation to emergency map');
+  navigatorKey.currentState?.pushNamed('/family/emergency_map', arguments: []);
+}
+
+// Call this directly from your notification click handler
+void _handleNotificationClick(Map<String, dynamic> payload) {
+  print('📣 Notification clicked with payload: $payload');
+  
+  if (payload.containsKey('emergency') && payload.containsKey('seniorId')) {
+    String seniorId = payload['seniorId'];
+    print('🚨 Emergency notification for senior: $seniorId');
+    
+    // Use the dedicated navigation method
+    navigateToEmergencyMap(seniorId);
+  }
+}
   // Method to explicitly save OneSignal User ID
   Future<bool> saveOneSignalUserId(String userId) async {
     try {
