@@ -18,10 +18,8 @@ class _SeniorProfileState extends State<SeniorProfile> {
   bool _isLoading = true;
   bool _isSaving = false;
 
-  // Controllers for editable fields
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
-  bool _fallDetectionEnabled = true;
 
   @override
   void initState() {
@@ -31,7 +29,6 @@ class _SeniorProfileState extends State<SeniorProfile> {
     _loadSeniorData();
   }
 
-  /// Fetches the senior's data from the database
   Future<void> _loadSeniorData() async {
     try {
       final user = _authService.currentUser;
@@ -42,7 +39,6 @@ class _SeniorProfileState extends State<SeniorProfile> {
             _senior = senior;
             _nameController = TextEditingController(text: _senior!.name);
             _phoneController = TextEditingController(text: _senior!.phoneNumber ?? '');
-            _fallDetectionEnabled = _senior!.fallDetectionEnabled;
             _isLoading = false;
           });
         } else {
@@ -59,7 +55,6 @@ class _SeniorProfileState extends State<SeniorProfile> {
     }
   }
 
-  /// Saves the edited data back to the database
   Future<void> _saveChanges() async {
     if (_senior == null) return;
 
@@ -68,7 +63,6 @@ class _SeniorProfileState extends State<SeniorProfile> {
     });
 
     try {
-      // Create an updated SeniorCitizen object with the new values
       final updatedSenior = SeniorCitizen(
         id: _senior!.id,
         email: _senior!.email,
@@ -80,10 +74,9 @@ class _SeniorProfileState extends State<SeniorProfile> {
         emergencyModeActive: _senior!.emergencyModeActive,
         lastKnownLocation: _senior!.lastKnownLocation,
         lastLocationUpdate: _senior!.lastLocationUpdate,
-        fallDetectionEnabled: _fallDetectionEnabled,
+        fallDetectionEnabled: _senior!.fallDetectionEnabled, // keep original value unchanged
       );
 
-      // Update the database
       bool success = await _databaseService.updateSenior(updatedSenior);
       if (success) {
         setState(() {
@@ -111,14 +104,12 @@ class _SeniorProfileState extends State<SeniorProfile> {
 
   @override
   Widget build(BuildContext context) {
-    // Show a loading indicator while fetching data
     if (_isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
-    // Handle case where senior data couldn't be loaded
     if (_senior == null) {
       return const Scaffold(
         body: Center(child: Text('Unable to load profile')),
@@ -129,7 +120,6 @@ class _SeniorProfileState extends State<SeniorProfile> {
       appBar: AppBar(
         title: const Text('Profile'),
         actions: [
-          // Show a loading indicator or save button based on saving state
           if (_isSaving)
             const Padding(
               padding: EdgeInsets.all(8.0),
@@ -147,7 +137,6 @@ class _SeniorProfileState extends State<SeniorProfile> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Profile picture display
             Center(
               child: CircleAvatar(
                 radius: 50,
@@ -163,35 +152,21 @@ class _SeniorProfileState extends State<SeniorProfile> {
               ),
             ),
             const SizedBox(height: 16),
-            // Editable name field
             TextFormField(
               controller: _nameController,
               decoration: const InputDecoration(labelText: 'Name'),
             ),
             const SizedBox(height: 16),
-            // Non-editable email field
             TextFormField(
               initialValue: _senior!.email,
               decoration: const InputDecoration(labelText: 'Email'),
               enabled: false,
             ),
             const SizedBox(height: 16),
-            // Editable phone number field
             TextFormField(
               controller: _phoneController,
               decoration: const InputDecoration(labelText: 'Phone Number'),
               keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: 16),
-            // Toggle for fall detection
-            SwitchListTile(
-              title: const Text('Fall Detection Enabled'),
-              value: _fallDetectionEnabled,
-              onChanged: (value) {
-                setState(() {
-                  _fallDetectionEnabled = value;
-                });
-              },
             ),
           ],
         ),
