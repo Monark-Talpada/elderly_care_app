@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:elderly_care_app/models/family_model.dart';
 import 'package:elderly_care_app/services/auth_service.dart';
 import 'package:elderly_care_app/services/database_service.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 
 class FamilyConnectionsScreen extends StatefulWidget {
   const FamilyConnectionsScreen({Key? key}) : super(key: key);
@@ -172,14 +174,25 @@ class _FamilyConnectionsScreenState extends State<FamilyConnectionsScreen> {
               ),
               isThreeLine: true,
               trailing: IconButton(
-                icon: const Icon(Icons.message),
-                onPressed: () {
-                  // Implement contact functionality
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Contacting ${member.name}')),
-                  );
+                icon: const Icon(Icons.call),
+                onPressed: () async {
+                  if (member.phoneNumber != null && member.phoneNumber!.isNotEmpty) {
+                    final Uri launchUri = Uri(scheme: 'tel', path: member.phoneNumber);
+                    if (await canLaunchUrl(launchUri)) {
+                      await launchUrl(launchUri);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Could not launch dialer for ${member.phoneNumber}')),
+                      );
+                    }
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('No phone number available for ${member.name}')),
+                    );
+                  }
                 },
               ),
+
               onTap: () {
                 // Show member details
                 showModalBottomSheet(

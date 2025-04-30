@@ -43,7 +43,7 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
       if (user != null) {
         // Get current senior using getCurrentSenior or getSeniorById
         final senior = await _databaseService.getCurrentSenior() ?? 
-                       await _databaseService.getSeniorById(user.id);
+                      await _databaseService.getSeniorById(user.id);
         
         // Get needs for the current user
         final needs = await _databaseService.getSeniorNeeds(user.id);
@@ -99,6 +99,8 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
           SnackBar(
             content: Text('Need status updated'),
             backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
           ),
         );
       } else {
@@ -106,12 +108,16 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
       }
     } catch (e) {
       print('Error updating need status: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to update need status'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update need status'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
@@ -124,23 +130,31 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
           _allNeeds.removeWhere((n) => n.id == need.id);
         });
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Need deleted'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Need deleted'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
       } else {
         throw Exception('Failed to delete need');
       }
     } catch (e) {
       print('Error deleting need: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to delete need'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete need'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
@@ -171,23 +185,31 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
           },
         ),
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadNeeds,
-        child: filteredNeeds.isEmpty
-            ? Center(
-                child: Text(
-                  'No needs found',
-                  style: Theme.of(context).textTheme.titleMedium,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _loadNeeds,
+          child: filteredNeeds.isEmpty
+              ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.4,
+                      child: Center(
+                        child: Text(
+                          'No needs found',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16.0),
+                  itemCount: filteredNeeds.length,
+                  itemBuilder: (context, index) => _buildNeedCard(filteredNeeds[index]),
                 ),
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.all(16.0),
-                itemCount: filteredNeeds.length,
-                itemBuilder: (context, index) {
-                  final need = filteredNeeds[index];
-                  return _buildNeedCard(need);
-                },
-              ),
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
@@ -237,6 +259,8 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
         title: Text(
           need.title,
           style: const TextStyle(fontWeight: FontWeight.bold),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -249,107 +273,109 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
                       need.status != NeedStatus.completed ? 
                       Colors.red : null,
               ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
             const SizedBox(height: 4),
             _buildStatusChip(need.status),
           ],
         ),
+        childrenPadding: const EdgeInsets.all(16.0),
+        expandedCrossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Description:',
-                  style: Theme.of(context).textTheme.titleSmall,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Description:',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: 100,
                 ),
-                const SizedBox(height: 8),
-                Text(need.description),
+                child: SingleChildScrollView(
+                  child: Text(need.description),
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (need.isRecurring) ...[
+                _buildInfoRow(Icons.repeat, 'Recurring: ${need.recurrenceRule ?? 'Yes'}'),
                 const SizedBox(height: 16),
-                if (need.isRecurring) ...[
-                  Row(
-                    children: [
-                      Icon(Icons.repeat, size: 16, color: Colors.grey),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Recurring: ${need.recurrenceRule ?? 'Yes'}',
-                        style: TextStyle(
-                          color: Colors.grey[700],
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                ],
-                if (need.assignedToId != null) ...[
-                  Row(
-                    children: [
-                      Icon(Icons.person, size: 16, color: Colors.grey),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Assigned to: ${need.assignedToId}',
-                        style: TextStyle(
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                ],
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    if (need.status != NeedStatus.completed) ...[
-                      TextButton.icon(
-                        icon: const Icon(Icons.check),
-                        label: const Text('Mark Complete'),
-                        onPressed: () {
-                          _updateNeedStatus(need, NeedStatus.completed);
-                        },
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.green,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    TextButton.icon(
-                      icon: const Icon(Icons.edit),
-                      label: const Text('Edit'),
-                      onPressed: () async {
-                        final result = await Navigator.pushNamed(
-                          context, 
-                          '/senior/edit_need',
-                          arguments: need,
-                        );
-                        if (result == true) {
-                          _loadNeeds();
-                        }
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    TextButton.icon(
-                      icon: const Icon(Icons.delete),
-                      label: const Text('Delete'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.red,
-                      ),
-                      onPressed: () {
-                        _showDeleteConfirmation(need);
-                      },
-                    ),
-                  ],
-                ),
               ],
-            ),
+              if (need.assignedToId != null) ...[
+                _buildInfoRow(Icons.person, 'Assigned to: ${need.assignedToId}'),
+                const SizedBox(height: 16),
+              ],
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.end,
+                children: [
+                  if (need.status != NeedStatus.completed)
+                    TextButton.icon(
+                      icon: const Icon(Icons.check),
+                      label: const Text('Complete'),
+                      onPressed: () {
+                        _updateNeedStatus(need, NeedStatus.completed);
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.green,
+                      ),
+                    ),
+                  TextButton.icon(
+                    icon: const Icon(Icons.edit),
+                    label: const Text('Edit'),
+                    onPressed: () async {
+                      final result = await Navigator.pushNamed(
+                        context, 
+                        '/senior/edit_need',
+                        arguments: need,
+                      );
+                      if (result == true) {
+                        _loadNeeds();
+                      }
+                    },
+                  ),
+                  TextButton.icon(
+                    icon: const Icon(Icons.delete),
+                    label: const Text('Delete'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red,
+                    ),
+                    onPressed: () {
+                      _showDeleteConfirmation(need);
+                    },
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  
+  Widget _buildInfoRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.grey),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              color: Colors.grey[700],
+              fontStyle: FontStyle.italic,
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _buildStatusChip(NeedStatus status) {
     Color color;
@@ -380,8 +406,9 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
         style: TextStyle(color: Colors.white, fontSize: 12),
       ),
       backgroundColor: color,
-      padding: const EdgeInsets.all(0),
+      padding: EdgeInsets.zero,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
     );
   }
 
