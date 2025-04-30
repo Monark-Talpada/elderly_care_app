@@ -87,12 +87,47 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
       }
     }
   }
+  
 
   void _navigateToEmergencyButton() {
     Navigator.pushNamed(context, '/emergency_button').then((_) {
       // Refresh data when returning from the emergency button screen
       _loadSeniorData();
     });
+  }
+
+   void _editSeniorName() async {
+    final TextEditingController _controller =
+        TextEditingController(text: _senior!.name);
+
+    final String? newName = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Name'),
+          content: TextField(
+            controller: _controller,
+            decoration: const InputDecoration(hintText: "Enter new name"),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, null),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, _controller.text),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (newName != null && newName.trim().isNotEmpty) {
+      setState(() {
+        _senior = _senior!.copyWith(name: newName.trim());
+      });
+    }
   }
 
   @override
@@ -118,10 +153,10 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
         title: const Text('Senior Dashboard'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.person),
             onPressed: () {
               Navigator.pushNamed(context, '/senior/profile');
-            },
+            },  
           ),
           IconButton(
             icon: const Icon(Icons.logout),
@@ -151,7 +186,7 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
     );
   }
 
-  Widget _buildWelcomeCard() {
+ Widget _buildWelcomeCard() {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -164,8 +199,10 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
               backgroundImage:
                   _senior!.photoUrl != null ? NetworkImage(_senior!.photoUrl!) : null,
               child: _senior!.photoUrl == null
-                  ? Text(_senior!.name.substring(0, 1).toUpperCase(),
-                      style: const TextStyle(fontSize: 32))
+                  ? Text(
+                      _senior!.name.substring(0, 1).toUpperCase(),
+                      style: const TextStyle(fontSize: 32),
+                    )
                   : null,
             ),
             const SizedBox(width: 16),
@@ -190,6 +227,10 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
                 ],
               ),
             ),
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: _editSeniorName,
+            )
           ],
         ),
       ),

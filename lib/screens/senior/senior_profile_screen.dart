@@ -74,7 +74,7 @@ class _SeniorProfileState extends State<SeniorProfile> {
         emergencyModeActive: _senior!.emergencyModeActive,
         lastKnownLocation: _senior!.lastKnownLocation,
         lastLocationUpdate: _senior!.lastLocationUpdate,
-        fallDetectionEnabled: _senior!.fallDetectionEnabled, // keep original value unchanged
+        
       );
 
       bool success = await _databaseService.updateSenior(updatedSenior);

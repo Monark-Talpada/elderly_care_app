@@ -270,19 +270,7 @@ class _FamilyConnectionsScreenState extends State<FamilyConnectionsScreen> {
                 if (member.phoneNumber != null)
                   _buildInfoRow(Icons.phone, 'Phone', member.phoneNumber!),
                 const SizedBox(height: 24),
-                const Text(
-                  'Notification Settings',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Divider(),
-                _buildInfoRow(
-                  member.notificationsEnabled ? Icons.notifications_active : Icons.notifications_off,
-                  'Notifications',
-                  member.notificationsEnabled ? 'Enabled' : 'Disabled',
-                ),
+                
                 const SizedBox(height: 24),
                 Center(
                   child: ElevatedButton(

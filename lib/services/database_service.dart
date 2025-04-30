@@ -327,7 +327,7 @@ Future<bool> removeEmergencyContact(String seniorId, String contactId) async {
       if (familyIds.isEmpty) {
         return [];
       }
-      
+
       List<FamilyMember> familyMembers = [];
       for (String id in familyIds) {
         // Get data from both users and family_member collections
@@ -352,6 +352,43 @@ Future<bool> removeEmergencyContact(String seniorId, String contactId) async {
     }
   }
   
+// get family members profile 
+ Future<FamilyMember?> getFamilyById(String id) async {
+  try {
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(id)
+        .get();
+
+    if (doc.exists) {
+      return FamilyMember.fromFirestore(doc);
+    } else {
+      return null;
+    }
+  } catch (e) {
+    print("Error in getFamilyById: $e");
+    return null;
+  }
+}
+
+
+
+// update family member profile 
+Future<bool> updateFamily(FamilyMember member) async {
+  try {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(member.id)
+        .update(member.toMap());
+    return true;
+  } catch (e) {
+    print('Error updating family member: $e');
+    return false;
+  }
+}
+
+
+
 // Add this method to your DatabaseService class
 
 Future<void> updateVolunteer(Volunteer volunteer) async {
