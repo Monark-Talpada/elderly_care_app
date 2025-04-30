@@ -141,111 +141,51 @@ class _VolunteerProfileScreenState extends State<VolunteerProfileScreen> {
     }
   }
 
-  Future<void> _verifyVolunteer() async {
-    setState(() {
-      _isVerifying = true;
-    });
+ 
 
-    try {
-      // Create updated volunteer object with isVerified set to true
-      final verifiedVolunteer = widget.volunteer.copyWith(
-        isVerified: true,
-      );
-
-      // Save to database
-      await _databaseService.updateVolunteer(verifiedVolunteer);
-
-      // Update local state to reflect the change
-      setState(() {
-        widget.volunteer.copyWith(isVerified: true);
-      });
-
-      // Show success message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Volunteer verified successfully')),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error verifying volunteer: $e')),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isVerifying = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Volunteer Profile'),
-        actions: widget.isAdmin && !widget.volunteer.isVerified
-            ? [
-                _isVerifying
-                    ? const Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        ),
-                      )
-                    : TextButton.icon(
-                        onPressed: _verifyVolunteer,
-                        icon: const Icon(Icons.verified_user, color: Colors.white),
-                        label: const Text(
-                          'Verify',
-                          style: TextStyle(color: Colors.white),
-                        ),
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: const Text('Volunteer Profile'),
+    ),
+    body: _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildProfileHeader(),
+                  const SizedBox(height: 24),
+                  _buildProfileStats(),
+                  const SizedBox(height: 24),
+                  _buildPersonalInfoSection(),
+                  const SizedBox(height: 24),
+                  _buildSkillsSection(),
+                  const SizedBox(height: 24),
+                  _buildServingAreasSection(),
+                  const SizedBox(height: 24),
+                  _buildReviewsSection(),
+                  const SizedBox(height: 32),
+                  Center(
+                    child: ElevatedButton(
+                      onPressed: _saveProfile,
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(200, 50),
                       ),
-              ]
-            : null,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildProfileHeader(),
-                    const SizedBox(height: 24),
-                    _buildProfileStats(),
-                    const SizedBox(height: 24),
-                    _buildPersonalInfoSection(),
-                    const SizedBox(height: 24),
-                    _buildSkillsSection(),
-                    const SizedBox(height: 24),
-                    _buildServingAreasSection(),
-                    const SizedBox(height: 24),
-                    _buildReviewsSection(),
-                    const SizedBox(height: 32),
-                    Center(
-                      child: ElevatedButton(
-                        onPressed: _saveProfile,
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(200, 50),
-                        ),
-                        child: const Text('Save Profile', style: TextStyle(fontSize: 16)),
-                      ),
+                      child: const Text('Save Profile', style: TextStyle(fontSize: 16)),
                     ),
-                    const SizedBox(height: 40),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 40),
+                ],
               ),
             ),
-    );
-  }
+          ),
+  );
+}
 
   Widget _buildProfileHeader() {
     return Center(
@@ -334,12 +274,6 @@ class _VolunteerProfileScreenState extends State<VolunteerProfileScreen> {
               '${widget.volunteer.ratingCount ?? 0}',
               'Reviews',
               Icons.rate_review,
-            ),
-            _buildStatColumn(
-              widget.volunteer.isVerified ? 'Yes' : 'No',
-              'Verified',
-              widget.volunteer.isVerified ? Icons.verified : Icons.pending,
-              color: widget.volunteer.isVerified ? Colors.blue : Colors.grey,
             ),
           ],
         ),

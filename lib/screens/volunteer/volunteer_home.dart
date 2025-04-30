@@ -233,27 +233,7 @@ class _VolunteerHomeScreenState extends State<VolunteerHomeScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.verified,
-                            color: volunteer.isVerified ? Colors.green : Colors.grey,
-                            size: isNarrow ? 16 : 20,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              volunteer.isVerified ? 'Verified Volunteer' : 'Pending Verification',
-                              style: TextStyle(
-                                color: volunteer.isVerified ? Colors.green : Colors.grey,
-                                fontSize: isNarrow ? 12 : 14,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                     
                       if (volunteer.rating != null) ...[
                         const SizedBox(height: 4),
                         Row(
