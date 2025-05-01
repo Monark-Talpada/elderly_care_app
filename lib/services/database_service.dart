@@ -139,7 +139,103 @@ Future<List<DailyNeed>> getSeniorNeeds(String seniorId) async {
   
   Future<bool> updateNeed(DailyNeed need) async {
     try {
-      await _needsCollection.doc(need.id).update(need.toMap());
+      final needMap = need.toMap();
+      if (kDebugMode) {
+        print('Updating need with data: $needMap');
+      }
+      await _needsCollection.doc(need.id).update(needMap);
+
+      // Fetch the original need to compare changes
+      final originalNeedSnapshot = await _needsCollection.doc(need.id).get();
+      final originalNeed = DailyNeed.fromFirestore(originalNeedSnapshot);
+
+      // Fetch connected family members (for update, complete, or other notifications)
+      List<FamilyMember> familyMembers = await getConnectedFamilyMembers(need.seniorId);
+
+      // Determine notification type
+      String title = '';
+      String message = '';
+      String action = '';
+
+      if (need.status != originalNeed.status) {
+        if (need.status == NeedStatus.inProgress && need.assignedToId != null) {
+          // Accept notification: Send only to the senior
+          title = 'Need Accepted';
+          message = '${need.title} has been accepted by a family member or volunteer.';
+          action = 'view_accepted_need';
+
+          final senior = await getSeniorById(need.seniorId);
+          if (senior != null) {
+            await NotificationService().sendNotification(
+              userId: senior.id,
+              title: title,
+              message: message,
+              additionalData: {
+                'needId': need.id,
+                'seniorId': need.seniorId,
+                'action': action,
+              },
+            );
+          }
+        } else if (need.status == NeedStatus.completed) {
+          // Complete notification: Send to family members and senior
+          title = 'Need Completed';
+          message = '${need.title} has been marked as completed.';
+          action = 'view_completed_need';
+
+          // Send to family members
+          for (var family in familyMembers) {
+            if (family.notificationsEnabled && (family.notificationPreferences[action] ?? true)) {
+              await NotificationService().sendNotification(
+                userId: family.id,
+                title: title,
+                message: message,
+                additionalData: {
+                  'needId': need.id,
+                  'seniorId': need.seniorId,
+                  'action': action,
+                },
+              );
+            }
+          }
+
+          // Send to senior
+          final senior = await getSeniorById(need.seniorId);
+          if (senior != null) {
+            await NotificationService().sendNotification(
+              userId: senior.id,
+              title: title,
+              message: message,
+              additionalData: {
+                'needId': need.id,
+                'seniorId': need.seniorId,
+                'action': action,
+              },
+            );
+          }
+        }
+      } else {
+        // General update: Send to family members only
+        title = 'Need Updated';
+        message = '${need.title} has been updated.';
+        action = 'view_updated_need';
+
+        for (var family in familyMembers) {
+          if (family.notificationsEnabled && (family.notificationPreferences[action] ?? true)) {
+            await NotificationService().sendNotification(
+              userId: family.id,
+              title: title,
+              message: message,
+              additionalData: {
+                'needId': need.id,
+                'seniorId': need.seniorId,
+                'action': action,
+              },
+            );
+          }
+        }
+      }
+
       return true;
     } catch (e) {
       if (kDebugMode) {
@@ -148,11 +244,33 @@ Future<List<DailyNeed>> getSeniorNeeds(String seniorId) async {
       return false;
     }
   }
-  
-  // Delete a need
-  Future<bool> deleteNeed(String needId) async {
+
+  Future<bool> deleteNeed(String needId, String seniorId) async {
     try {
+      if (kDebugMode) {
+        print('Deleting need with ID: $needId');
+      }
       await _needsCollection.doc(needId).delete();
+
+      // Fetch connected family members
+      List<FamilyMember> familyMembers = await getConnectedFamilyMembers(seniorId);
+
+      // Send deletion notification
+      for (var family in familyMembers) {
+        if (family.notificationsEnabled && (family.notificationPreferences['view_deleted_need'] ?? true)) {
+          await NotificationService().sendNotification(
+            userId: family.id,
+            title: 'Need Deleted',
+            message: 'A need for the senior has been deleted.',
+            additionalData: {
+              'needId': needId,
+              'seniorId': seniorId,
+              'action': 'view_deleted_need',
+            },
+          );
+        }
+      }
+
       return true;
     } catch (e) {
       if (kDebugMode) {
@@ -161,7 +279,6 @@ Future<List<DailyNeed>> getSeniorNeeds(String seniorId) async {
       return false;
     }
   }
-
 
   
   // Update user location
