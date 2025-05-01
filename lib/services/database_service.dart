@@ -4,6 +4,7 @@ import 'package:elderly_care_app/models/family_model.dart';
 import 'package:elderly_care_app/models/senior_model.dart';
 import 'package:elderly_care_app/models/volunteer_model.dart';
 import 'package:elderly_care_app/models/appointment_model.dart';
+import 'package:elderly_care_app/services/notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
@@ -765,32 +766,43 @@ Future<bool> bookVolunteerWithAppointment({
     }
   }
   
-  // Get appointments for a senior
-  Stream<List<Appointment>> getSeniorAppointments(String seniorId) {
-    return _appointmentsCollection
-        .where('seniorId', isEqualTo: seniorId)
-        .orderBy('appointmentDate')
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) {
-          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-          return Appointment(
-            id: doc.id,
-            seniorId: data['seniorId'],
-            volunteerId: data['volunteerId'],
-            needId: data['needId'],
-            startTime: (data['startTime'] as Timestamp).toDate(),
-            endTime: (data['endTime'] as Timestamp).toDate(),
-            status: _stringToAppointmentStatus(data['status']),
-            notes: data['notes'],
-            createdAt: (data['createdAt'] as Timestamp).toDate(),
-            completedAt: data['completedAt'] != null 
-                ? (data['completedAt'] as Timestamp).toDate() 
-                : null,
-            rating: data['rating'],
-            feedback: data['feedback'],
-          );
-        }).toList());
-  }
+ // Update the existing method to handle the modified Appointment class
+Stream<List<Appointment>> getSeniorAppointments(String seniorId) {
+  return _appointmentsCollection
+      .where('seniorId', isEqualTo: seniorId)
+      .orderBy('startTime')
+      .snapshots()
+      .map((snapshot) => snapshot.docs.map((doc) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        return Appointment(
+          id: doc.id,
+          seniorId: data['seniorId'],
+          volunteerId: data['volunteerId'],
+          needId: data['needId'],
+          startTime: (data['startTime'] as Timestamp).toDate(),
+          endTime: (data['endTime'] as Timestamp).toDate(),
+          status: _stringToAppointmentStatus(data['status']),
+          notes: data['notes'],
+          createdAt: (data['createdAt'] as Timestamp).toDate(),
+          completedAt: data['completedAt'] != null 
+              ? (data['completedAt'] as Timestamp).toDate() 
+              : null,
+          rating: data['rating'],
+          feedback: data['feedback'],
+          // Add new fields
+          actualStartTime: data['actualStartTime'] != null
+              ? (data['actualStartTime'] as Timestamp).toDate()
+              : null,
+          actualEndTime: data['actualEndTime'] != null
+              ? (data['actualEndTime'] as Timestamp).toDate()
+              : null,
+          seniorConfirmedStart: data['seniorConfirmedStart'],
+          seniorConfirmedEnd: data['seniorConfirmedEnd'],
+          actualDurationMinutes: data['actualDurationMinutes'],
+        );
+      }).toList());
+}
+
   
   // Get appointments for a volunteer
   Future<List<Appointment>> getVolunteerAppointments(String volunteerId) async {
@@ -827,13 +839,166 @@ Future<bool> bookVolunteerWithAppointment({
     }
   }
 
-  // Helper method to convert string to enum
-  AppointmentStatus _stringToAppointmentStatus(String status) {
+  // Add these methods to your DatabaseService class
+
+// Request to start an appointment (volunteer initiates)
+  Future<bool> requestStartAppointment(String appointmentId) async {
+    try {
+      await _appointmentsCollection.doc(appointmentId).update({
+        'status': AppointmentStatus.waitingToStart.name,
+        'actualStartTimeRequested': FieldValue.serverTimestamp(),
+      });
+      
+      // Get appointment to send notification
+      DocumentSnapshot appointmentDoc = await _appointmentsCollection.doc(appointmentId).get();
+      Map<String, dynamic> appointmentData = appointmentDoc.data() as Map<String, dynamic>;
+      String seniorId = appointmentData['seniorId'];
+      
+      // Send notification to senior using NotificationService
+      await NotificationService().sendNotification(
+        userId: seniorId,
+        title: 'Appointment Start Request',
+        message: 'The volunteer has requested to start your appointment. Please confirm.',
+        additionalData: {
+          'appointmentId': appointmentId,
+          'action': 'start',
+        },
+      );
+      
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error requesting to start appointment: $e');
+      }
+      return false;
+    }
+  }
+
+  // Request to end an appointment (volunteer initiates)
+  Future<bool> requestEndAppointment(String appointmentId) async {
+    try {
+      await _appointmentsCollection.doc(appointmentId).update({
+        'status': AppointmentStatus.waitingToEnd.name,
+        'actualEndTimeRequested': FieldValue.serverTimestamp(),
+      });
+      
+      // Get appointment to send notification
+      DocumentSnapshot appointmentDoc = await _appointmentsCollection.doc(appointmentId).get();
+      Map<String, dynamic> appointmentData = appointmentDoc.data() as Map<String, dynamic>;
+      String seniorId = appointmentData['seniorId'];
+      
+      // Send notification to senior using NotificationService
+      await NotificationService().sendNotification(
+        userId: seniorId,
+        title: 'Appointment End Request',
+        message: 'The volunteer has requested to end your appointment. Please confirm.',
+        additionalData: {
+          'appointmentId': appointmentId,
+          'action': 'end',
+        },
+      );
+      
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error requesting to end appointment: $e');
+      }
+      return false;
+    }
+  }
+
+  // Senior confirms appointment start
+  Future<bool> confirmAppointmentStart(String appointmentId) async {
+    try {
+      await _appointmentsCollection.doc(appointmentId).update({
+        'status': AppointmentStatus.inProgress.name,
+        'actualStartTime': FieldValue.serverTimestamp(),
+        'seniorConfirmedStart': true,
+      });
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error confirming appointment start: $e');
+      }
+      return false;
+    }
+  }
+
+  // Senior confirms appointment end and calculates actual duration
+  Future<bool> confirmAppointmentEnd(String appointmentId) async {
+    try {
+      DocumentSnapshot appointmentDoc = await _appointmentsCollection.doc(appointmentId).get();
+      Map<String, dynamic> data = appointmentDoc.data() as Map<String, dynamic>;
+      
+      Timestamp? actualStartTimestamp = data['actualStartTime'] as Timestamp?;
+      
+      if (actualStartTimestamp == null) {
+        return false;
+      }
+      
+      DateTime actualStartTime = actualStartTimestamp.toDate();
+      DateTime actualEndTime = DateTime.now();
+      
+      int actualDurationMinutes = actualEndTime.difference(actualStartTime).inMinutes;
+      
+      await _appointmentsCollection.doc(appointmentId).update({
+        'status': AppointmentStatus.completed.name,
+        'actualEndTime': Timestamp.fromDate(actualEndTime),
+        'seniorConfirmedEnd': true,
+        'completedAt': Timestamp.fromDate(actualEndTime),
+        'actualDurationMinutes': actualDurationMinutes,
+      });
+      
+      String volunteerId = data['volunteerId'];
+      await updateVolunteerActualHours(volunteerId, actualDurationMinutes);
+      
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error confirming appointment end: $e');
+      }
+      return false;
+    }
+  }
+
+  // Update volunteer hours based on actual minutes worked
+  Future<bool> updateVolunteerActualHours(String volunteerId, int additionalMinutes) async {
+    try {
+      DocumentSnapshot volunteerDoc = await _volunteersCollection.doc(volunteerId).get();
+      Map<String, dynamic> data = volunteerDoc.data() as Map<String, dynamic>;
+      
+      int currentHours = data['totalHoursVolunteered'] ?? 0;
+      int currentMinutes = data['totalMinutesVolunteered'] ?? 0;
+      
+      int totalMinutes = (currentHours * 60) + currentMinutes + additionalMinutes;
+      
+      int newHours = totalMinutes ~/ 60;
+      int remainingMinutes = totalMinutes % 60;
+      
+      await _volunteersCollection.doc(volunteerId).update({
+        'totalHoursVolunteered': newHours,
+        'totalMinutesVolunteered': remainingMinutes,
+      });
+      
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error updating volunteer hours: $e');
+      }
+      return false;
+    }
+  }
+
+   AppointmentStatus _stringToAppointmentStatus(String status) {
     switch (status) {
       case 'scheduled':
         return AppointmentStatus.scheduled;
+      case 'waitingToStart':
+        return AppointmentStatus.waitingToStart;
       case 'inProgress':
         return AppointmentStatus.inProgress;
+      case 'waitingToEnd':
+        return AppointmentStatus.waitingToEnd;
       case 'completed':
         return AppointmentStatus.completed;
       case 'cancelled':
@@ -845,21 +1010,24 @@ Future<bool> bookVolunteerWithAppointment({
   
   // Update appointment status
   Future<bool> updateAppointmentStatus(
-    String appointmentId, 
-    AppointmentStatus newStatus
-  ) async {
-    try {
-      await _appointmentsCollection.doc(appointmentId).update({
-        'status': newStatus.toString().split('.').last,
-      });
-      return true;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error updating appointment status: $e');
-      }
-      return false;
+  String appointmentId, 
+  AppointmentStatus newStatus
+) async {
+  try {
+    await _appointmentsCollection.doc(appointmentId).update({
+      'status': newStatus.name,
+    });
+    // Verify update
+    DocumentSnapshot doc = await _appointmentsCollection.doc(appointmentId).get();
+    print('Updated appointment $appointmentId status: ${(doc.data() as Map<String, dynamic>)['status']}');
+    return true;
+  } catch (e) {
+    if (kDebugMode) {
+      print('Error updating appointment status: $e');
     }
+    return false;
   }
+}
   
   // Get senior by email
   Future<SeniorCitizen?> getSeniorByEmail(String email) async {

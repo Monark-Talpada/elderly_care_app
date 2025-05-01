@@ -49,7 +49,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
         _upcomingAppointments = appointments
             .where((appt) => 
                 appt.status == AppointmentStatus.scheduled || 
-                appt.status == AppointmentStatus.inProgress)
+                appt.status == AppointmentStatus.waitingToStart ||
+                appt.status == AppointmentStatus.inProgress ||
+                appt.status == AppointmentStatus.waitingToEnd)
             .toList();
         _pastAppointments = appointments
             .where((appt) => 
@@ -82,37 +84,83 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
     }
   }
 
-  Future<void> _updateAppointmentStatus(Appointment appointment, AppointmentStatus newStatus) async {
+  // Request to start an appointment
+  Future<void> _requestStartAppointment(Appointment appointment) async {
     try {
-      await _databaseService.updateAppointmentStatus(appointment.id, newStatus);
-      
-      // If completing the appointment, record completion time
-      if (newStatus == AppointmentStatus.completed) {
-        await _databaseService.completeAppointment(
-          appointment.id, 
-          DateTime.now(),
+      final success = await _databaseService.requestStartAppointment(appointment.id);
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Start request sent to senior for confirmation')),
         );
-        
-        // Update volunteer's total hours
-        final int durationInHours = appointment.endTime.difference(appointment.startTime).inHours;
-        await _databaseService.updateVolunteerHours(
-          widget.volunteer.id,
-          widget.volunteer.totalHoursVolunteered + durationInHours
+        await _loadAppointments();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to send start request')),
         );
       }
-      
-      // Refresh the appointments list
-      await _loadAppointments();
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Appointment updated to ${newStatus.toString().split('.').last}')),
-      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating appointment: $e')),
+        SnackBar(content: Text('Error: $e')),
       );
     }
   }
+
+  // Request to end an appointment
+  Future<void> _requestEndAppointment(Appointment appointment) async {
+    try {
+      final success = await _databaseService.requestEndAppointment(appointment.id);
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('End request sent to senior for confirmation')),
+        );
+        await _loadAppointments();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to send end request')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
+  Future<void> _cancelAppointment(Appointment appointment) async {
+  try {
+    final success = await _databaseService.updateAppointmentStatus(
+      appointment.id, 
+      AppointmentStatus.cancelled
+    );
+    if (success) {
+      // Release volunteer time slot
+      await _databaseService.updateVolunteerTimeSlot(
+        appointment.volunteerId,
+        DateFormat('yyyy-MM-dd').format(appointment.startTime),
+        TimeSlot(
+          startTime: appointment.startTime,
+          endTime: appointment.endTime,
+          isBooked: false,
+          bookedById: null,
+        ),
+        false,
+        null,
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Appointment cancelled')),
+      );
+      await _loadAppointments();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to cancel appointment')),
+      );
+    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error: $e')),
+    );
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -214,6 +262,34 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                       icon: Icons.access_time, 
                       text: '${DateFormat.jm().format(appointment.startTime)} - ${DateFormat.jm().format(appointment.endTime)}'
                     ),
+                    
+                    // Show actual start time if available
+                    if (appointment.actualStartTime != null) ...[
+                      const SizedBox(height: 8),
+                      _buildIconTextRow(
+                        icon: Icons.play_arrow, 
+                        text: 'Started: ${DateFormat.jm().format(appointment.actualStartTime!)}'
+                      ),
+                    ],
+                    
+                    // Show actual end time if available
+                    if (appointment.actualEndTime != null) ...[
+                      const SizedBox(height: 8),
+                      _buildIconTextRow(
+                        icon: Icons.stop, 
+                        text: 'Ended: ${DateFormat.jm().format(appointment.actualEndTime!)}'
+                      ),
+                    ],
+                    
+                    // Show actual duration if available
+                    if (appointment.actualDurationMinutes != null) ...[
+                      const SizedBox(height: 8),
+                      _buildIconTextRow(
+                        icon: Icons.timelapse, 
+                        text: 'Duration: ${_formatDuration(appointment.actualDurationMinutes!)}'
+                      ),
+                    ],
+                    
                     if (appointment.notes != null && appointment.notes!.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       _buildIconTextRow(
@@ -222,6 +298,30 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
                         isMultiline: true,
                       ),
                     ],
+                    
+                    // Status information
+                    if (appointment.status == AppointmentStatus.waitingToStart) ...[
+                      const SizedBox(height: 12),
+                      const Divider(),
+                      const Text(
+                        'Waiting for senior to confirm start',
+                        style: TextStyle(
+                          color: Colors.orange,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ] else if (appointment.status == AppointmentStatus.waitingToEnd) ...[
+                      const SizedBox(height: 12),
+                      const Divider(),
+                      const Text(
+                        'Waiting for senior to confirm completion',
+                        style: TextStyle(
+                          color: Colors.orange,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                    
                     if (isUpcoming) ...[
                       const SizedBox(height: 16),
                       _buildAppointmentActions(appointment, constraints)
@@ -237,6 +337,21 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
         );
       },
     );
+  }
+
+  // Helper method to format duration in minutes to hours and minutes
+  String _formatDuration(int minutes) {
+    if (minutes < 60) {
+      return '$minutes minutes';
+    } else {
+      int hours = minutes ~/ 60;
+      int remainingMinutes = minutes % 60;
+      if (remainingMinutes == 0) {
+        return '$hours hour${hours > 1 ? 's' : ''}';
+      } else {
+        return '$hours hour${hours > 1 ? 's' : ''} $remainingMinutes minute${remainingMinutes > 1 ? 's' : ''}';
+      }
+    }
   }
 
   Widget _buildIconTextRow({
@@ -264,39 +379,80 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
   }
 
   Widget _buildAppointmentActions(Appointment appointment, BoxConstraints constraints) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        if (appointment.status == AppointmentStatus.scheduled) ...[
-          _buildActionButton(
-            text: 'Start',
-            color: Colors.green,
-            onPressed: () => _updateAppointmentStatus(
-              appointment, 
-              AppointmentStatus.inProgress
+    // Different actions based on appointment status
+    switch (appointment.status) {
+      case AppointmentStatus.scheduled:
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            _buildActionButton(
+              text: 'Start',
+              color: Colors.green,
+              onPressed: () => _requestStartAppointment(appointment),
             ),
-          ),
-          const SizedBox(width: 8),
-          _buildActionButton(
-            text: 'Cancel',
-            color: Colors.red,
-            onPressed: () => _updateAppointmentStatus(
-              appointment, 
-              AppointmentStatus.cancelled
+            const SizedBox(width: 8),
+            _buildActionButton(
+              text: 'Cancel',
+              color: Colors.red,
+              onPressed: () => _cancelAppointment(appointment),
             ),
-          ),
-        ] else if (appointment.status == AppointmentStatus.inProgress) ...[
-          _buildActionButton(
-            text: 'Complete',
-            color: const Color.fromARGB(255, 249, 249, 249),
-            onPressed: () => _updateAppointmentStatus(
-              appointment, 
-              AppointmentStatus.completed
+          ],
+        );
+        
+      case AppointmentStatus.waitingToStart:
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            _buildActionButton(
+              text: 'Cancel Request',
+              color: Colors.orange,
+              // Revert back to scheduled
+              onPressed: () async {
+                await _databaseService.updateAppointmentStatus(
+                  appointment.id, 
+                  AppointmentStatus.scheduled
+                );
+                _loadAppointments();
+              },
             ),
-          ),
-        ],
-      ],
-    );
+            const SizedBox(width: 8),
+            _buildActionButton(
+              text: 'Cancel Appointment',
+              color: Colors.red,
+              onPressed: () => _cancelAppointment(appointment),
+            ),
+          ],
+        );
+        
+      case AppointmentStatus.inProgress:
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            _buildActionButton(
+              text: 'End Appointment',
+              color: Colors.blue,
+              onPressed: () => _requestEndAppointment(appointment),
+            ),
+          ],
+        );
+        
+      case AppointmentStatus.waitingToEnd:
+        return const Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Text(
+              'Awaiting senior confirmation',
+              style: TextStyle(
+                fontStyle: FontStyle.italic,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        );
+        
+      default:
+        return const SizedBox.shrink();
+    }
   }
 
   Widget _buildActionButton({
@@ -352,26 +508,38 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
 
   Widget _buildStatusChip(AppointmentStatus status) {
     Color color;
-    String label = status.toString().split('.').last;
+    String label;
     
     switch (status) {
       case AppointmentStatus.scheduled:
         color = Colors.blue;
+        label = 'Scheduled';
+        break;
+      case AppointmentStatus.waitingToStart:
+        color = Colors.orange;
+        label = 'Start Requested';
         break;
       case AppointmentStatus.inProgress:
-        color = Colors.orange;
+        color = Colors.green;
+        label = 'In Progress';
+        break;
+      case AppointmentStatus.waitingToEnd:
+        color = Colors.purple;
+        label = 'End Requested';
         break;
       case AppointmentStatus.completed:
-        color = Colors.green;
+        color = Colors.teal;
+        label = 'Completed';
         break;
       case AppointmentStatus.cancelled:
         color = Colors.red;
+        label = 'Cancelled';
         break;
     }
     
     return Chip(
       label: Text(
-        label[0].toUpperCase() + label.substring(1),
+        label,
         style: const TextStyle(color: Colors.white),
       ),
       backgroundColor: color,

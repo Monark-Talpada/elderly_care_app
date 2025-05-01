@@ -16,6 +16,12 @@ class NotificationService {
 
   NotificationService._internal();
 
+  // Firestore collections
+  final CollectionReference _notificationsCollection = 
+      FirebaseFirestore.instance.collection('notifications');
+  final CollectionReference _usersCollection = 
+      FirebaseFirestore.instance.collection('users');
+
   Future<void> initialize(String oneSignalAppId) async {
     try {
       print('🔔 Initializing OneSignal with App ID: $oneSignalAppId');
@@ -42,59 +48,184 @@ class NotificationService {
     }
   }
 
-  // Add this to your NotificationService class
-
-// Helper method to navigate to emergency map with a senior's ID
-Future<void> navigateToEmergencyMap(String seniorId) async {
-  print('🚑 Emergency navigation requested for senior: $seniorId');
-  
-  try {
-    // Fetch senior data from Firestore
-    DocumentSnapshot seniorDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(seniorId)
-        .get();
-    
-    if (seniorDoc.exists) {
-      // Convert to SeniorCitizen object
-      SeniorCitizen senior = SeniorCitizen.fromFirestore(seniorDoc);
+  // Trigger an emergency alert
+  Future<void> triggerEmergencyAlert({
+    required String seniorId,
+    required GeoPoint location,
+    String? message,
+  }) async {
+    try {
+      print('🚨 Triggering emergency alert for senior: $seniorId');
       
-      // Navigate to emergency map
-      navigatorKey.currentState?.pushNamed(
-        '/family/emergency_map',
-        arguments: [senior],
-      );
+      // Create an emergency document in Firestore
+      // This will trigger the backend service to send notifications
+      await FirebaseFirestore.instance.collection('emergencies').add({
+        'seniorId': seniorId,
+        'location': location,
+        'message': message,
+        'active': true,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
       
-      print('✅ Successfully navigated to emergency map');
-      return;
-    } else {
-      print('❌ Senior document not found');
+      print('✅ Emergency alert created successfully');
+    } catch (e) {
+      print('🚨 Error creating emergency alert: $e');
     }
-  } catch (e) {
-    print('🚨 Error navigating to emergency map: $e');
   }
   
-  // If we get here, something went wrong
-  print('⚠️ Fallback: Attempting direct navigation to emergency map');
-  navigatorKey.currentState?.pushNamed('/family/emergency_map', arguments: []);
-}
+  // Cancel an emergency alert
+  Future<void> cancelEmergencyAlert(String emergencyId) async {
+    try {
+      print('🔄 Cancelling emergency alert: $emergencyId');
+      
+      // Update the emergency document to inactive
+      // This will trigger the backend service to send cancellation notifications
+      await FirebaseFirestore.instance
+          .collection('emergencies')
+          .doc(emergencyId)
+          .update({
+        'active': false,
+        'cancelledAt': FieldValue.serverTimestamp(),
+      });
+      
+      print('✅ Emergency alert cancelled successfully');
+    } catch (e) {
+      print('🚨 Error cancelling emergency alert: $e');
+    }
+  }
+  
+  // General purpose notification sender - compatible with your backend
+  Future<void> sendNotification({
+    required String userId,
+    required String title,
+    required String message,
+    Map<String, dynamic>? additionalData,
+  }) async {
+    try {
+      print('📣 Sending notification to user: $userId');
+      print('📝 Title: $title');
+      print('📝 Message: $message');
+      print('📝 Additional Data: $additionalData');
+      
+      // Get the user document to find OneSignal ID
+      final userDoc = await _usersCollection.doc(userId).get();
+      final userData = userDoc.data() as Map<String, dynamic>?;
 
-// Call this directly from your notification click handler
-void _handleNotificationClick(Map<String, dynamic> payload) {
-  print('📣 Notification clicked with payload: $payload');
-  
-  if (payload.containsKey('emergency') && payload.containsKey('seniorId')) {
-    String seniorId = payload['seniorId'];
-    print('🚨 Emergency notification for senior: $seniorId');
-    
-    // Use the dedicated navigation method
-    navigateToEmergencyMap(seniorId);
+      if (!userDoc.exists || userData == null || userData['oneSignalUserId'] == null) {
+        print('🚨 No OneSignal User ID found for user: $userId');
+        return;
+      }
+
+      final oneSignalUserId = userData['oneSignalUserId'] as String;
+      
+      // Create notification document that matches exactly what our backend expects
+      await _notificationsCollection.add({
+        'recipientOneSignalId': oneSignalUserId,
+        'title': title,
+        'body': message, // Note: body field matches backend expectations
+        'data': additionalData ?? {}, // Additional data for payload
+        'status': 'pending', // Backend will look for 'pending' status
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      
+      print('✅ Notification request created for user $userId');
+    } catch (e) {
+      print('🚨 Error creating notification: $e');
+    }
   }
-}
-  // Method to explicitly save OneSignal User ID
+  
+  // Send appointment notification - specialized method for appointments
+  Future<void> sendAppointmentNotification({
+    required String userId,
+    required String title,
+    required String message,
+    required String appointmentId,
+    required String action,
+  }) async {
+    // Use the general method with appointment-specific data
+    await sendNotification(
+      userId: userId,
+      title: title,
+      message: message,
+      additionalData: {
+        'appointmentId': appointmentId,
+        'action': action,
+      },
+    );
+  }
+
+  // Handle notification click events
+  void _handleNotificationClick(Map<String, dynamic> payload) {
+    print('📣 Notification clicked with payload: $payload');
+    
+    // Handle emergency notification
+    if (payload.containsKey('emergency') && payload.containsKey('senior_id')) {
+      String seniorId = payload['senior_id'];
+      print('🚨 Emergency notification for senior: $seniorId');
+      navigateToEmergencyMap(seniorId);
+    } 
+    // Handle emergency cancellation notification
+    else if (payload.containsKey('emergency_cancelled') && payload.containsKey('senior_id')) {
+      print('✅ Emergency cancellation received');
+      // Could navigate to a specific screen or show a dialog
+    }
+    // Handle appointment notification
+    else if (payload.containsKey('appointmentId') && payload.containsKey('action')) {
+      String appointmentId = payload['appointmentId'];
+      String action = payload['action'];
+      print('📅 Appointment notification: $action for appointment $appointmentId');
+      navigateToAppointmentScreen(appointmentId, action);
+    }
+  }
+
+  // Navigate to emergency map
+  Future<void> navigateToEmergencyMap(String seniorId) async {
+    print('🚑 Emergency navigation requested for senior: $seniorId');
+    
+    try {
+      DocumentSnapshot seniorDoc = await _usersCollection.doc(seniorId).get();
+      
+      if (seniorDoc.exists) {
+        SeniorCitizen senior = SeniorCitizen.fromFirestore(seniorDoc);
+        navigatorKey.currentState?.pushNamed(
+          '/family/emergency_map',
+          arguments: [senior],
+        );
+        print('✅ Successfully navigated to emergency map');
+        return;
+      } else {
+        print('❌ Senior document not found');
+      }
+    } catch (e) {
+      print('🚨 Error navigating to emergency map: $e');
+    }
+    
+    print('⚠️ Fallback: Attempting direct navigation to emergency map');
+    navigatorKey.currentState?.pushNamed('/family/emergency_map', arguments: []);
+  }
+
+  // Navigate to appointment screen
+  Future<void> navigateToAppointmentScreen(String appointmentId, String action) async {
+    print('📅 Navigating to appointment screen for appointment: $appointmentId, action: $action');
+    
+    try {
+      // Navigate to the senior appointments screen
+      navigatorKey.currentState?.pushNamed(
+        '/senior_appointments_screen', // Ensure this route is defined in your app
+        arguments: {
+          'appointmentId': appointmentId,
+          'action': action, // 'start' or 'end'
+        },
+      );
+      print('✅ Successfully navigated to appointment screen');
+    } catch (e) {
+      print('🚨 Error navigating to appointment screen: $e');
+    }
+  }
+
+  // Save OneSignal User ID
   Future<bool> saveOneSignalUserId(String userId) async {
     try {
-      // Get the current OneSignal User ID directly
       final pushSubscription = OneSignal.User.pushSubscription;
       final currentOneSignalUserId = pushSubscription.id;
 
@@ -107,11 +238,7 @@ void _handleNotificationClick(Map<String, dynamic> payload) {
         return false;
       }
 
-      // Reference to the user document
-      final userDocRef = FirebaseFirestore.instance.collection('users').doc(userId);
-
-      // Directly update the document
-      await userDocRef.update({
+      await _usersCollection.doc(userId).update({
         'oneSignalUserId': currentOneSignalUserId,
       });
 
@@ -119,14 +246,10 @@ void _handleNotificationClick(Map<String, dynamic> payload) {
       return true;
     } catch (e) {
       print('🚨 Error saving OneSignal User ID: $e');
-      
-      // If update fails, try set with merge
       try {
-        final userDocRef = FirebaseFirestore.instance.collection('users').doc(userId);
-        await userDocRef.set({
+        await _usersCollection.doc(userId).set({
           'oneSignalUserId': OneSignal.User.pushSubscription.id
         }, SetOptions(merge: true));
-        
         print('✅ Saved OneSignal User ID using merge');
         return true;
       } catch (mergeError) {
@@ -136,27 +259,22 @@ void _handleNotificationClick(Map<String, dynamic> payload) {
     }
   }
 
-  // Call this method immediately after login
+  // Handle user login
   Future<void> onUserLogin(String userId) async {
     print('🔐 User logged in: $userId');
-    
-    // Short delay to ensure OneSignal is fully initialized
     await Future.delayed(Duration(seconds: 2));
-    
     await saveOneSignalUserId(userId);
   }
 
-  // Verification method
+  // Verify OneSignal User ID
   Future<void> verifyOneSignalUserId(String userId) async {
     try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .get();
+      final userDoc = await _usersCollection.doc(userId).get();
+      final userData = userDoc.data() as Map<String, dynamic>?;
 
       print('🕵️ User Document Data:');
-      print(userDoc.data());
-      print('🆔 OneSignal User ID in Document: ${userDoc.data()?['oneSignalUserId']}');
+      print(userData);
+      print('🆔 OneSignal User ID in Document: ${userData?['oneSignalUserId']}');
     } catch (e) {
       print('🚨 Error verifying OneSignal User ID: $e');
     }
