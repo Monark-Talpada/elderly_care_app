@@ -8,13 +8,13 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 class SeniorProfileScreen extends StatefulWidget {
-  final SeniorCitizen senior;
-  final FamilyMember familyMember;
+  final SeniorCitizen? senior; // Made nullable to handle route arguments
+  final FamilyMember? familyMember; // Made nullable to handle route arguments
 
   const SeniorProfileScreen({
     Key? key,
-    required this.senior,
-    required this.familyMember,
+    this.senior,
+    this.familyMember,
   }) : super(key: key);
 
   @override
@@ -26,10 +26,35 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
   bool _isLoading = true;
   List<DailyNeed> _needsList = [];
   String? _errorMessage;
+  final ScrollController _scrollController = ScrollController();
+  Map<String, GlobalKey> _needKeys = {}; // Keys for each NeedCard
 
   @override
   void initState() {
     super.initState();
+    // Extract arguments from the route
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      final int? tabIndex = args?['tabIndex'];
+      final String? needId = args?['needId'];
+
+      // Set the NEEDS tab if tabIndex is provided
+      if (tabIndex != null && tabIndex == 1) {
+        _tabController.index = tabIndex;
+      }
+
+      // Scroll to the specific need if needId is provided
+      if (needId != null && _needKeys.containsKey(needId)) {
+        Future.delayed(const Duration(milliseconds: 300), () {
+          Scrollable.ensureVisible(
+            _needKeys[needId]!.currentContext!,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        });
+      }
+    });
+
     _tabController = TabController(length: 2, vsync: this);
     _loadNeeds();
   }
@@ -37,6 +62,7 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
   @override
   void dispose() {
     _tabController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -48,10 +74,12 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
 
     try {
       final dbService = Provider.of<DatabaseService>(context, listen: false);
-      final needs = await dbService.getSeniorNeeds(widget.senior.id);
+      final needs = await dbService.getSeniorNeeds(_getSenior().id);
       
       setState(() {
         _needsList = needs;
+        // Initialize GlobalKeys for each need
+        _needKeys = { for (var need in needs) need.id: GlobalKey() };
         _isLoading = false;
       });
     } catch (e) {
@@ -62,10 +90,22 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
     }
   }
 
+  // Helper to get senior from widget or route arguments
+  SeniorCitizen _getSenior() {
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    return args?['senior'] as SeniorCitizen? ?? widget.senior!;
+  }
+
+  // Helper to get family member from widget or route arguments
+  FamilyMember _getFamilyMember() {
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    return args?['familyMember'] as FamilyMember? ?? widget.familyMember!;
+  }
+
   Future<void> _addNeed() async {
     final result = await showDialog<DailyNeed>(
       context: context,
-      builder: (context) => _AddNeedDialog(seniorId: widget.senior.id),
+      builder: (context) => _AddNeedDialog(seniorId: _getSenior().id),
     );
 
     if (result != null) {
@@ -100,7 +140,7 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
       builder: (context) => AlertDialog(
         title: const Text('Disconnect Senior'),
         content: Text(
-          'Are you sure you want to disconnect from ${widget.senior.name}? '
+          'Are you sure you want to disconnect from ${_getSenior().name}? '
           'You will no longer receive updates or emergency alerts.',
         ),
         actions: [
@@ -121,9 +161,9 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
         final dbService = Provider.of<DatabaseService>(context, listen: false);
         
         // Update family member
-        final updatedFamily = widget.familyMember.copyWith(
-          connectedSeniorIds: widget.familyMember.connectedSeniorIds
-              .where((id) => id != widget.senior.id)
+        final updatedFamily = _getFamilyMember().copyWith(
+          connectedSeniorIds: _getFamilyMember().connectedSeniorIds
+              .where((id) => id != _getSenior().id)
               .toList(),
         );
         final familyUpdated = await dbService.updateFamilyMember(updatedFamily);
@@ -137,9 +177,9 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
         }
         
         // Update senior
-        final updatedSenior = widget.senior.copyWith(
-          connectedFamilyIds: widget.senior.connectedFamilyIds
-              .where((id) => id != widget.familyMember.id)
+        final updatedSenior = _getSenior().copyWith(
+          connectedFamilyIds: _getSenior().connectedFamilyIds
+              .where((id) => id != _getFamilyMember().id)
               .toList(),
         );
         final seniorUpdated = await dbService.updateSenior(updatedSenior);
@@ -172,13 +212,15 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
 
   @override
   Widget build(BuildContext context) {
-    final lastLocationUpdate = widget.senior.lastLocationUpdate != null
-        ? DateFormat('MMM d, yyyy h:mm a').format(widget.senior.lastLocationUpdate!)
+    final senior = _getSenior();
+    final familyMember = _getFamilyMember();
+    final lastLocationUpdate = senior.lastLocationUpdate != null
+        ? DateFormat('MMM d, yyyy h:mm a').format(senior.lastLocationUpdate!)
         : 'Never';
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.senior.name),
+        title: Text(senior.name),
         actions: [
           IconButton(
             icon: const Icon(Icons.link_off),
@@ -206,7 +248,7 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                 Card(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                    side: widget.senior.emergencyModeActive
+                    side: senior.emergencyModeActive
                         ? const BorderSide(color: Colors.red, width: 2)
                         : BorderSide.none,
                   ),
@@ -217,13 +259,13 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                         CircleAvatar(
                           radius: 50,
                           backgroundColor: Colors.blue.shade100,
-                          backgroundImage: widget.senior.photoUrl != null
-                              ? NetworkImage(widget.senior.photoUrl!)
+                          backgroundImage: senior.photoUrl != null
+                              ? NetworkImage(senior.photoUrl!)
                               : null,
-                          child: widget.senior.photoUrl == null
+                          child: senior.photoUrl == null
                               ? Text(
-                                  widget.senior.name.isNotEmpty
-                                      ? widget.senior.name[0].toUpperCase()
+                                  senior.name.isNotEmpty
+                                      ? senior.name[0].toUpperCase()
                                       : '?',
                                   style: const TextStyle(
                                     fontSize: 40,
@@ -235,14 +277,14 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          widget.senior.name,
+                          senior.name,
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(height: 8),
-                        if (widget.senior.emergencyModeActive)
+                        if (senior.emergencyModeActive)
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
@@ -295,13 +337,13 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                         _buildInfoRow(
                           icon: Icons.email,
                           title: 'Email',
-                          value: widget.senior.email,
+                          value: senior.email,
                         ),
                         const Divider(),
                         _buildInfoRow(
                           icon: Icons.phone,
                           title: 'Phone',
-                          value: widget.senior.phoneNumber ?? 'Not provided',
+                          value: senior.phoneNumber ?? 'Not provided',
                         ),
                       ],
                     ),
@@ -333,9 +375,9 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                         _buildInfoRow(
                           icon: Icons.location_on,
                           title: 'Coordinates',
-                          value: widget.senior.lastKnownLocation != null
-                              ? '${widget.senior.lastKnownLocation!.latitude.toStringAsFixed(4)}, '
-                                '${widget.senior.lastKnownLocation!.longitude.toStringAsFixed(4)}'
+                          value: senior.lastKnownLocation != null
+                              ? '${senior.lastKnownLocation!.latitude.toStringAsFixed(4)}, '
+                                '${senior.lastKnownLocation!.longitude.toStringAsFixed(4)}'
                               : 'No location data available',
                         ),
                       ],
@@ -362,7 +404,7 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                         _buildInfoRow(
                           icon: Icons.family_restroom,
                           title: 'Connected Family Members',
-                          value: '${widget.senior.connectedFamilyIds.length}',
+                          value: '${senior.connectedFamilyIds.length}',
                         ),
                       ],
                     ),
@@ -411,13 +453,17 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                               ],
                             )
                           : ListView.builder(
+                              controller: _scrollController,
                               padding: const EdgeInsets.all(16),
                               itemCount: _needsList.length,
                               itemBuilder: (context, index) {
                                 final need = _needsList[index];
+                                final isHighlighted = need.id == (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?)?['needId'];
                                 return NeedCard(
+                                  key: _needKeys[need.id], // Assign GlobalKey
                                   need: need,
-                                  seniorName: widget.senior.name,
+                                  seniorName: senior.name,
+                                  isHighlighted: isHighlighted, // Pass highlight flag
                                   onStatusChange: (newStatus) async {
                                     try {
                                       final dbService = Provider.of<DatabaseService>(
@@ -427,7 +473,7 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                                       
                                       final updatedNeed = need.copyWith(
                                         status: newStatus,
-                                        assignedToId: widget.familyMember.id,
+                                        assignedToId: familyMember.id,
                                       );
                                       
                                       final success = await dbService.updateNeed(updatedNeed);
@@ -617,7 +663,6 @@ class _AddNeedDialogState extends State<_AddNeedDialog> {
   }
 }
 
-// Extension to capitalize enum strings
 extension StringExtension on String {
   String capitalize() {
     return "${this[0].toUpperCase()}${substring(1)}";

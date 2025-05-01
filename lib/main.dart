@@ -13,6 +13,7 @@ import 'screens/volunteer/volunteer_profile_screen.dart';
 import 'package:elderly_care_app/screens/family/connect_senior.dart';
 import 'package:elderly_care_app/screens/family/senior_profile.dart';
 import 'package:elderly_care_app/screens/family/family_profile.dart';
+import 'package:elderly_care_app/screens/family/senior_profile.dart';
 import 'package:elderly_care_app/screens/family/emergency_map.dart';
 import 'package:elderly_care_app/screens/auth/splash_screen.dart';
 import 'package:elderly_care_app/screens/senior/daily_needs.dart';
@@ -139,6 +140,13 @@ class MyApp extends StatelessWidget {
         final args = ModalRoute.of(context)!.settings.arguments as List<SeniorCitizen>;
         return EmergencyMapScreen(seniors: args);
       },
+       
+    '/senior_profile': (context) => const SeniorProfileScreen(
+          senior: null, // Will be overridden by arguments
+          familyMember: null, // Will be overridden by arguments
+        ), 
+    
+  
        '/senior/emergency_contacts': (context) => const EmergencyContactsScreen(),
 
       // Senior Needs-related routes

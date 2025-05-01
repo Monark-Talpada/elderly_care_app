@@ -100,22 +100,42 @@ Future<List<DailyNeed>> getSeniorNeeds(String seniorId) async {
             .toList());
   }
   
-  // Add a new need
- Future<String?> addNeed(DailyNeed need) async {
-    try {
-      final needMap = need.toMap();
-      if (kDebugMode) {
-        print('Adding need with data: $needMap');
-      }
-      DocumentReference docRef = await _needsCollection.add(needMap);
-      return docRef.id;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error adding need: $e');
-      }
-      return null;
+  Future<String?> addNeed(DailyNeed need) async {
+  try {
+    final needMap = need.toMap();
+    if (kDebugMode) {
+      print('Adding need with data: $needMap');
     }
+    DocumentReference docRef = await _needsCollection.add(needMap);
+    String needId = docRef.id;
+
+    // Fetch connected family members
+    List<FamilyMember> familyMembers = await getConnectedFamilyMembers(need.seniorId);
+
+    // Send notification to each family member
+    for (var family in familyMembers) {
+      if (family.notificationsEnabled && (family.notificationPreferences['newNeed'] ?? true)) {
+        await NotificationService().sendNotification(
+          userId: family.id,
+          title: 'New Need Created',
+          message: '${need.title} has been created for the senior.',
+          additionalData: {
+            'needId': needId,
+            'seniorId': need.seniorId,
+            'action': 'view_need',
+          },
+        );
+      }
+    }
+
+    return needId;
+  } catch (e) {
+    if (kDebugMode) {
+      print('Error adding need: $e');
+    }
+    return null;
   }
+}
   
   Future<bool> updateNeed(DailyNeed need) async {
     try {
