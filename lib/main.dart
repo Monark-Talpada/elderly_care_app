@@ -65,8 +65,12 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthService()),
-        Provider<DatabaseService>(create: (_) => DatabaseService()),
+        ChangeNotifierProvider<AuthService>(
+          create: (_) => AuthService(),
+        ),
+        ChangeNotifierProvider<DatabaseService>(
+          create: (_) => DatabaseService(),
+        ),
         Provider<NotificationService>(create: (_) => NotificationService()),
         Provider<StorageService>(create: (_) => StorageService()),
       ],

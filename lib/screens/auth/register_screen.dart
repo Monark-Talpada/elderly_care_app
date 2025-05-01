@@ -34,31 +34,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _register() async {
-    // Ensure the form is valid
     if (_formKey.currentState == null || !_formKey.currentState!.validate()) {
       return;
     }
 
-    // Check password match
-    if (_passwordController.text.trim() !=
-        _confirmPasswordController.text.trim()) {
+    if (_passwordController.text.trim() != _confirmPasswordController.text.trim()) {
       setState(() {
         _errorMessage = 'Passwords do not match';
       });
       return;
     }
 
-    // Start loading state
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      // Safely get AuthService using Provider
       final authService = Provider.of<AuthService>(context, listen: false);
 
-      // Attempt registration
       final user = await authService.register(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
@@ -67,7 +61,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         phoneNumber: _phoneController.text.trim(),
       );
 
-      // Handle registration result
       if (user != null) {
         if (!mounted) return;
         Navigator.of(context).pushReplacement(
@@ -82,7 +75,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         });
       }
     } catch (e) {
-      // Handle any unexpected errors
       setState(() {
         _errorMessage = 'An unexpected error occurred: ${e.toString()}';
         _isLoading = false;
@@ -110,7 +102,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -141,13 +133,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 8),
                     Text(
                       'Join our community and stay connected!',
-                      textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey[600],
                       ),
                     ),
-                    const SizedBox(height: 48),
+                    const SizedBox(height: 32),
                     
                     // Registration form
                     Container(
@@ -167,37 +158,69 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           _buildTextField(
-                            _nameController,
-                            'Full Name',
-                            Icons.person,
+                            controller: _nameController,
+                            label: 'Full Name',
+                            icon: Icons.person,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your full name';
+                              }
+                              return null;
+                            },
                           ),
                           const SizedBox(height: 16),
                           _buildTextField(
-                            _emailController,
-                            'Email',
-                            Icons.email,
+                            controller: _emailController,
+                            label: 'Email',
+                            icon: Icons.email,
                             keyboardType: TextInputType.emailAddress,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your email';
+                              }
+                              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                                return 'Please enter a valid email';
+                              }
+                              return null;
+                            },
                           ),
                           const SizedBox(height: 16),
                           _buildTextField(
-                            _phoneController,
-                            'Phone Number',
-                            Icons.phone,
+                            controller: _phoneController,
+                            label: 'Phone Number',
+                            icon: Icons.phone,
                             keyboardType: TextInputType.phone,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your phone number';
+                              }
+                              if (!RegExp(r'^[0-9]{10}$').hasMatch(value)) {
+                                return 'Please enter a valid 10-digit phone number';
+                              }
+                              return null;
+                            },
                           ),
                           const SizedBox(height: 16),
                           _buildPasswordField(
-                            _passwordController,
-                            'Password',
-                            _isPasswordVisible,
-                            () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                            controller: _passwordController,
+                            label: 'Password',
+                            isVisible: _isPasswordVisible,
+                            onToggleVisibility: () {
+                              setState(() {
+                                _isPasswordVisible = !_isPasswordVisible;
+                              });
+                            },
                           ),
                           const SizedBox(height: 16),
                           _buildPasswordField(
-                            _confirmPasswordController,
-                            'Confirm Password',
-                            _isConfirmPasswordVisible,
-                            () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
+                            controller: _confirmPasswordController,
+                            label: 'Confirm Password',
+                            isVisible: _isConfirmPasswordVisible,
+                            onToggleVisibility: () {
+                              setState(() {
+                                _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                              });
+                            },
                           ),
                           if (_errorMessage != null) ...[
                             const SizedBox(height: 16),
@@ -254,7 +277,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       ),
                                     )
                                   : const Text(
-                                      'Register',
+                                      'Create Account',
                                       style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
@@ -292,11 +315,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildTextField(
-    TextEditingController controller,
-    String label,
-    IconData icon, {
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
     TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
   }) {
     final theme = Theme.of(context);
     
@@ -329,38 +353,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
         filled: true,
         fillColor: theme.primaryColor.withOpacity(0.05),
       ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please enter $label';
-        }
-
-        // Email validation
-        if (label == 'Email') {
-          final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-          if (!emailRegex.hasMatch(value)) {
-            return 'Please enter a valid email address';
-          }
-        }
-
-        // Phone number validation (basic)
-        if (label == 'Phone Number') {
-          final phoneRegex = RegExp(r'^[0-9]{10}$');
-          if (!phoneRegex.hasMatch(value)) {
-            return 'Please enter a valid 10-digit phone number';
-          }
-        }
-
-        return null;
-      },
+      validator: validator,
     );
   }
 
-  Widget _buildPasswordField(
-    TextEditingController controller,
-    String label,
-    bool isVisible,
-    VoidCallback toggleVisibility,
-  ) {
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String label,
+    required bool isVisible,
+    required VoidCallback onToggleVisibility,
+  }) {
     final theme = Theme.of(context);
     
     return TextFormField(
@@ -394,17 +396,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
             isVisible ? Icons.visibility_off : Icons.visibility,
             color: theme.primaryColor,
           ),
-          onPressed: toggleVisibility,
+          onPressed: onToggleVisibility,
         ),
         filled: true,
         fillColor: theme.primaryColor.withOpacity(0.05),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
-          return 'Please enter $label';
+          return 'Please enter your $label';
         }
-
-        // Password strength validation
         if (label == 'Password') {
           if (value.length < 8) {
             return 'Password must be at least 8 characters long';
@@ -419,7 +419,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             return 'Password must contain a number';
           }
         }
-
         return null;
       },
     );

@@ -11,18 +11,18 @@ import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
 
 class DatabaseService extends ChangeNotifier {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final String? userId;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  String? userId;
   
   DatabaseService({this.userId});
   
   // Collection references
-  CollectionReference get _usersCollection => _firestore.collection('users');
-  CollectionReference get _needsCollection => _firestore.collection('needs');
-  CollectionReference get _appointmentsCollection => _firestore.collection('appointments');
-  CollectionReference get _seniorsCollection => _firestore.collection('seniors');
-  CollectionReference get _familyCollection => _firestore.collection('family_member');
-  CollectionReference get _volunteersCollection => _firestore.collection('volunteers');
+  CollectionReference get _usersCollection => _db.collection('users');
+  CollectionReference get _needsCollection => _db.collection('needs');
+  CollectionReference get _appointmentsCollection => _db.collection('appointments');
+  CollectionReference get _seniorsCollection => _db.collection('seniors');
+  CollectionReference get _familyCollection => _db.collection('family_member');
+  CollectionReference get _volunteersCollection => _db.collection('volunteers');
 
 
     Stream<List<DailyNeed>> streamSeniorNeeds(String seniorId) {
@@ -306,7 +306,7 @@ Future<List<DailyNeed>> getSeniorNeeds(String seniorId) async {
 Future<List<FamilyMember>> getEmergencyContacts(String seniorId) async {
   try {
     // Fetch the senior document
-    final seniorDoc = await _firestore.collection('users').doc(seniorId).get();
+    final seniorDoc = await _db.collection('users').doc(seniorId).get();
     
     if (!seniorDoc.exists) {
       return [];
@@ -323,8 +323,8 @@ Future<List<FamilyMember>> getEmergencyContacts(String seniorId) async {
 
     // Fetch emergency contact details from multiple collections
     final emergencyContactsFutures = emergencyContactIds.map((contactId) async {
-      final userDoc = await _firestore.collection('users').doc(contactId).get();
-      final familyDoc = await _firestore.collection('family_members').doc(contactId).get();
+      final userDoc = await _db.collection('users').doc(contactId).get();
+      final familyDoc = await _db.collection('family_members').doc(contactId).get();
       
       if (userDoc.exists && familyDoc.exists) {
         // Merge data from both collections
@@ -355,7 +355,7 @@ Future<List<FamilyMember>> getEmergencyContacts(String seniorId) async {
 Future<bool> addEmergencyContact(String seniorId, String contactId) async {
   try {
     // Get the current senior's document
-    final seniorDocRef = _firestore.collection('users').doc(seniorId);
+    final seniorDocRef = _db.collection('users').doc(seniorId);
     
     // Update the emergency contact IDs array
     await seniorDocRef.update({
@@ -375,7 +375,7 @@ Future<bool> addEmergencyContact(String seniorId, String contactId) async {
 Future<bool> removeEmergencyContact(String seniorId, String contactId) async {
   try {
     // Get the current senior's document
-    final seniorDocRef = _firestore.collection('users').doc(seniorId);
+    final seniorDocRef = _db.collection('users').doc(seniorId);
     
     // Remove the contact ID from the emergency contact IDs array
     await seniorDocRef.update({
@@ -536,14 +536,14 @@ Future<void> updateVolunteer(Volunteer volunteer) async {
     print('Skills to be updated: ${volunteer.skills}');
     
     // Update the basic user info
-    await _firestore.collection('users').doc(volunteer.id).update({
+    await _db.collection('users').doc(volunteer.id).update({
       'name': volunteer.name,
       'phoneNumber': volunteer.phoneNumber,
     });
     print('Updated user collection');
     
     // Update volunteer-specific info
-    await _firestore.collection('volunteers').doc(volunteer.id).update({
+    await _db.collection('volunteers').doc(volunteer.id).update({
       'bio': volunteer.bio,
       'skills': volunteer.skills,
       'servingAreas': volunteer.servingAreas,
@@ -1312,10 +1312,10 @@ Stream<List<Appointment>> getSeniorAppointments(String seniorId) {
 
   Future<bool> submitReview(Review review) async {
     try {
-      await _firestore.collection('reviews').doc(review.id).set(review.toMap());
+      await _db.collection('reviews').doc(review.id).set(review.toMap());
       
       // Update volunteer's average rating
-      final volunteerRef = _firestore.collection('volunteers').doc(review.volunteerId);
+      final volunteerRef = _db.collection('volunteers').doc(review.volunteerId);
       final volunteerDoc = await volunteerRef.get();
       
       if (volunteerDoc.exists) {
@@ -1340,7 +1340,7 @@ Stream<List<Appointment>> getSeniorAppointments(String seniorId) {
 
   Future<List<Review>> getVolunteerReviews(String volunteerId) async {
     try {
-      final snapshot = await _firestore
+      final snapshot = await _db
           .collection('reviews')
           .where('volunteerId', isEqualTo: volunteerId)
           .orderBy('createdAt', descending: true)
@@ -1357,7 +1357,7 @@ Stream<List<Appointment>> getSeniorAppointments(String seniorId) {
 
   Future<Review?> getAppointmentReview(String appointmentId) async {
     try {
-      final snapshot = await _firestore
+      final snapshot = await _db
           .collection('reviews')
           .where('appointmentId', isEqualTo: appointmentId)
           .get();
