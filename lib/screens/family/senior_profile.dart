@@ -663,8 +663,3 @@ class _AddNeedDialogState extends State<_AddNeedDialog> {
   }
 }
 
-extension StringExtension on String {
-  String capitalize() {
-    return "${this[0].toUpperCase()}${substring(1)}";
-  }
-}

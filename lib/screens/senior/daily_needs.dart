@@ -123,7 +123,7 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
 
   Future<void> _deleteNeed(DailyNeed need) async {
     try {
-      final success = await _databaseService.deleteNeed(need.id);
+      final success = await _databaseService.deleteNeed(need.id, _senior!.id);
       
       if (success) {
         setState(() {
