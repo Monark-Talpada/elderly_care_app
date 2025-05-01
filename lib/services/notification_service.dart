@@ -4,6 +4,9 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:elderly_care_app/models/senior_model.dart';
+import 'package:elderly_care_app/services/database_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:elderly_care_app/models/family_model.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -154,30 +157,35 @@ class NotificationService {
     );
   }
 
-  // Handle notification click events
-  void _handleNotificationClick(Map<String, dynamic> payload) {
-    print('📣 Notification clicked with payload: $payload');
-    
-    // Handle emergency notification
-    if (payload.containsKey('emergency') && payload.containsKey('senior_id')) {
-      String seniorId = payload['senior_id'];
-      print('🚨 Emergency notification for senior: $seniorId');
-      navigateToEmergencyMap(seniorId);
-    } 
-    // Handle emergency cancellation notification
-    else if (payload.containsKey('emergency_cancelled') && payload.containsKey('senior_id')) {
-      print('✅ Emergency cancellation received');
-      // Could navigate to a specific screen or show a dialog
-    }
-    // Handle appointment notification
-    else if (payload.containsKey('appointmentId') && payload.containsKey('action')) {
-      String appointmentId = payload['appointmentId'];
-      String action = payload['action'];
-      print('📅 Appointment notification: $action for appointment $appointmentId');
-      navigateToAppointmentScreen(appointmentId, action);
-    }
+ void _handleNotificationClick(Map<String, dynamic> payload) {
+  print('📣 Notification clicked with payload: $payload');
+  
+  // Handle emergency notification
+  if (payload.containsKey('emergency') && payload.containsKey('senior_id')) {
+    String seniorId = payload['senior_id'];
+    print('🚨 Emergency notification for senior: $seniorId');
+    navigateToEmergencyMap(seniorId);
+  } 
+  // Handle emergency cancellation notification
+  else if (payload.containsKey('emergency_cancelled') && payload.containsKey('senior_id')) {
+    print('✅ Emergency cancellation received');
+    // Could navigate to a specific screen or show a dialog
   }
-
+  // Handle appointment notification
+  else if (payload.containsKey('appointmentId') && payload.containsKey('action')) {
+    String appointmentId = payload['appointmentId'];
+    String action = payload['action'];
+    print('📅 Appointment notification: $action for appointment $appointmentId');
+    navigateToAppointmentScreen(appointmentId, action);
+  }
+  // Handle need notification
+  else if (payload.containsKey('needId') && payload.containsKey('seniorId') && payload.containsKey('action') && payload['action'] == 'view_need') {
+    String needId = payload['needId'];
+    String seniorId = payload['seniorId'];
+    print('📋 Need notification for need: $needId, senior: $seniorId');
+    navigateToSeniorProfileNeeds(seniorId, needId);
+  }
+}
   // Navigate to emergency map
   Future<void> navigateToEmergencyMap(String seniorId) async {
     print('🚑 Emergency navigation requested for senior: $seniorId');
@@ -223,6 +231,44 @@ class NotificationService {
     }
   }
 
+  // Navigate to senior profile needs section
+Future<void> navigateToSeniorProfileNeeds(String seniorId, String needId) async {
+  print('📋 Navigating to senior profile needs tab for senior: $seniorId, need: $needId');
+  
+  try {
+    // Fetch the senior
+    final senior = await DatabaseService().getSeniorById(seniorId);
+    if (senior == null) {
+      print('🚨 Senior not found: $seniorId');
+      return;
+    }
+
+    // Fetch the current family member (assuming the user is logged in)
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
+      print('🚨 No logged-in user found');
+      return;
+    }
+    final familyMember = await DatabaseService().getFamilyById(userId);
+    if (familyMember == null) {
+      print('🚨 Family member not found: $userId');
+      return;
+    }
+
+    navigatorKey.currentState?.pushNamed(
+      '/senior_profile', // Ensure this route matches your SeniorProfileScreen
+      arguments: {
+        'senior': senior,
+        'familyMember': familyMember,
+        'needId': needId, // To highlight or scroll to the specific need
+        'tabIndex': 1, // Select the NEEDS tab (index 1)
+      },
+    );
+    print('✅ Successfully navigated to senior profile');
+  } catch (e) {
+    print('🚨 Error navigating to senior profile: $e');
+  }
+}
   // Save OneSignal User ID
   Future<bool> saveOneSignalUserId(String userId) async {
     try {

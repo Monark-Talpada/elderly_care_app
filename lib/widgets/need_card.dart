@@ -6,12 +6,16 @@ class NeedCard extends StatelessWidget {
   final DailyNeed need;
   final String seniorName;
   final Function(NeedStatus) onStatusChange;
+    final bool isHighlighted;
+
 
   const NeedCard({
     Key? key,
     required this.need,
     required this.seniorName,
     required this.onStatusChange,
+    this.isHighlighted = false,
+
   }) : super(key: key);
 
   String _getFormattedDate(DateTime date) {
