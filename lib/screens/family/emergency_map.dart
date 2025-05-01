@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class EmergencyMapScreen extends StatefulWidget {
   final List<SeniorCitizen> seniors;
@@ -20,13 +21,40 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
   LatLng? _currentUserLocation;
   bool _isLoadingLocation = false;
   bool _locationPermissionDenied = false;
+  Map<String, GeoPoint> _emergencyLocations = {};
 
   @override
   void initState() {
     super.initState();
     _mapController = MapController();
-    _initializeMap();
+    _loadEmergencyLocations();
     _getCurrentLocation();
+  }
+
+  Future<void> _loadEmergencyLocations() async {
+    try {
+      // Get all active emergencies
+      final emergencies = await FirebaseFirestore.instance
+          .collection('emergencies')
+          .where('active', isEqualTo: true)
+          .get();
+
+      // Create a map of seniorId to emergency location
+      final locations = <String, GeoPoint>{};
+      for (var doc in emergencies.docs) {
+        final data = doc.data();
+        if (data['location'] != null) {
+          locations[data['seniorId']] = data['location'] as GeoPoint;
+        }
+      }
+
+      setState(() {
+        _emergencyLocations = locations;
+        _initializeMap();
+      });
+    } catch (e) {
+      print('Error loading emergency locations: $e');
+    }
   }
 
   Future<void> _getCurrentLocation() async {
@@ -95,21 +123,27 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
   }
 
   void _initializeMap() {
-    final seniorsWithLocation = widget.seniors.where((senior) => senior.lastKnownLocation != null).toList();
+    // Filter seniors who have emergency locations
+    final seniorsWithEmergency = widget.seniors.where((senior) => 
+      _emergencyLocations.containsKey(senior.id)).toList();
     
-    if (seniorsWithLocation.isNotEmpty) {
+    if (seniorsWithEmergency.isNotEmpty) {
+      final firstSenior = seniorsWithEmergency.first;
+      final emergencyLocation = _emergencyLocations[firstSenior.id]!;
+      
       _initialPosition = LatLng(
-        seniorsWithLocation.first.lastKnownLocation!.latitude,
-        seniorsWithLocation.first.lastKnownLocation!.longitude,
+        emergencyLocation.latitude,
+        emergencyLocation.longitude,
       );
 
-      _markers = seniorsWithLocation.map((senior) {
+      _markers = seniorsWithEmergency.map((senior) {
+        final location = _emergencyLocations[senior.id]!;
         return Marker(
           width: 80.0,
           height: 80.0,
           point: LatLng(
-            senior.lastKnownLocation!.latitude,
-            senior.lastKnownLocation!.longitude,
+            location.latitude,
+            location.longitude,
           ),
           child: Column(
             children: [
@@ -184,7 +218,10 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _getCurrentLocation,
+            onPressed: () {
+              _loadEmergencyLocations();
+              _getCurrentLocation();
+            },
             tooltip: 'Refresh Location',
           ),
         ],
