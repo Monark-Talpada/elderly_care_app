@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:elderly_care_app/models/appointment_model.dart';
 import 'package:elderly_care_app/models/senior_model.dart';
 import 'package:elderly_care_app/models/volunteer_model.dart';
+import 'package:elderly_care_app/models/review_model.dart';
 import 'package:elderly_care_app/services/database_service.dart';
 
 class AppointmentsScreen extends StatefulWidget {
@@ -41,10 +42,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
     });
 
     try {
-      // Load all appointments for this volunteer
       final appointments = await _databaseService.getVolunteerAppointments(widget.volunteer.id);
       
-      // Split into upcoming and past appointments
       setState(() {
         _upcomingAppointments = appointments
             .where((appt) => 
@@ -60,7 +59,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
             .toList();
       });
 
-      // Load senior profiles for all appointments
+      // Load senior profiles and reviews for all appointments
       final Set<String> seniorIds = appointments
           .map((appointment) => appointment.seniorId)
           .toSet();
@@ -543,6 +542,159 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
         style: const TextStyle(color: Colors.white),
       ),
       backgroundColor: color,
+    );
+  }
+
+  Widget _buildAppointmentCard(Appointment appointment) {
+    final isCompleted = appointment.status == AppointmentStatus.completed;
+    final isCancelled = appointment.status == AppointmentStatus.cancelled;
+    final isUpcoming = appointment.status == AppointmentStatus.scheduled || 
+                      appointment.status == AppointmentStatus.waitingToStart || 
+                      appointment.status == AppointmentStatus.inProgress || 
+                      appointment.status == AppointmentStatus.waitingToEnd;
+    final isInProgress = appointment.status == AppointmentStatus.inProgress;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Appointment with ${_seniorProfiles[appointment.seniorId]?.name ?? 'Senior'}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                _buildStatusChip(appointment.status),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _buildInfoRow(
+              Icons.calendar_today,
+              'Date',
+              DateFormat('MMM dd, yyyy').format(appointment.startTime),
+            ),
+            const SizedBox(height: 8),
+            _buildInfoRow(
+              Icons.access_time,
+              'Time',
+              '${DateFormat.jm().format(appointment.startTime)} - ${DateFormat.jm().format(appointment.endTime)}',
+            ),
+            const SizedBox(height: 8),
+            _buildInfoRow(
+              Icons.location_on,
+              'Location',
+              _seniorProfiles[appointment.seniorId]?.lastKnownLocation != null
+                  ? '${_seniorProfiles[appointment.seniorId]?.lastKnownLocation?.latitude.toStringAsFixed(6)}, ${_seniorProfiles[appointment.seniorId]?.lastKnownLocation?.longitude.toStringAsFixed(6)}'
+                  : 'Location not specified',
+            ),
+            const SizedBox(height: 16),
+            if (isCompleted)
+              FutureBuilder<Review?>(
+                future: _databaseService.getAppointmentReview(appointment.id),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  
+                  if (snapshot.hasData && snapshot.data != null) {
+                    final review = snapshot.data!;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Senior\'s Review',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            ...List.generate(
+                              5,
+                              (index) => Icon(
+                                Icons.star,
+                                size: 20,
+                                color: index < review.rating
+                                    ? Colors.amber
+                                    : Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              DateFormat('MMM dd, yyyy').format(review.createdAt),
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          review.feedback,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ],
+                    );
+                  }
+                  
+                  return const Text(
+                    'No review yet',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  );
+                },
+              ),
+            if (isInProgress)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () => _requestEndAppointment(appointment),
+                    icon: const Icon(Icons.check),
+                    label: const Text('Complete'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: Colors.grey[600]),
+        const SizedBox(width: 8),
+        Text(
+          '$label: ',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[600],
+          ),
+        ),
+        Text(value),
+      ],
     );
   }
 }
