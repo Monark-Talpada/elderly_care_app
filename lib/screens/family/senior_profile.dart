@@ -65,7 +65,7 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_isFirstLoad) {
-      _loadNeeds();
+    _loadNeeds();
       _isFirstLoad = false;
     }
   }
@@ -302,8 +302,8 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                     ],
                   ),
                   padding: EdgeInsets.all(20),
-                  child: Column(
-                    children: [
+                    child: Column(
+                      children: [
                       Container(
                         width: 120,
                         height: 120,
@@ -335,62 +335,62 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                                 ),
                                 child: Center(
                                   child: Text(
-                                    senior.name.isNotEmpty
-                                        ? senior.name[0].toUpperCase()
-                                        : '?',
+                                  senior.name.isNotEmpty
+                                      ? senior.name[0].toUpperCase()
+                                      : '?',
                                     style: TextStyle(
                                       fontSize: 48,
-                                      fontWeight: FontWeight.bold,
+                                    fontWeight: FontWeight.bold,
                                       color: Colors.white,
-                                    ),
                                   ),
+                        ),
                                 ),
                               ),
                       ),
                       SizedBox(height: 20),
-                      Text(
-                        senior.name,
+                        Text(
+                          senior.name,
                         style: TextStyle(
                           fontSize: 28,
-                          fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.bold,
                           color: Colors.white,
+                          ),
                         ),
-                      ),
                       if (senior.emergencyModeActive) ...[
                         SizedBox(height: 12),
-                        Container(
+                          Container(
                           padding: EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
                             borderRadius: BorderRadius.circular(20),
-                          ),
+                            ),
                           child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.warning_amber_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'EMERGENCY MODE ACTIVE',
-                                style: TextStyle(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.warning_amber_rounded,
                                   color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                                  size: 20,
                                 ),
-                              ),
-                            ],
+                                SizedBox(width: 8),
+                                Text(
+                                  'EMERGENCY MODE ACTIVE',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
                       ],
-                    ],
+                      ],
+                    ),
                   ),
-                ),
                 SizedBox(height: 24),
                 
                 // Contact Information
@@ -410,13 +410,13 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                     ),
                     SizedBox(width: 12),
                     Text(
-                      'Contact Information',
-                      style: TextStyle(
+                  'Contact Information',
+                  style: TextStyle(
                         fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.bold,
                         color: Colors.black87,
-                      ),
-                    ),
+                  ),
+                ),
                   ],
                 ),
                 SizedBox(height: 16),
@@ -465,13 +465,13 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                     ),
                     SizedBox(width: 12),
                     Text(
-                      'Location Information',
-                      style: TextStyle(
+                  'Location Information',
+                  style: TextStyle(
                         fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.bold,
                         color: Colors.black87,
-                      ),
-                    ),
+                  ),
+                ),
                   ],
                 ),
                 SizedBox(height: 16),
@@ -523,13 +523,13 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                     ),
                     SizedBox(width: 12),
                     Text(
-                      'Safety Settings',
-                      style: TextStyle(
+                  'Safety Settings',
+                  style: TextStyle(
                         fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.bold,
                         color: Colors.black87,
-                      ),
-                    ),
+                  ),
+                ),
                   ],
                 ),
                 SizedBox(height: 16),
@@ -541,9 +541,9 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                   child: Padding(
                     padding: EdgeInsets.all(20),
                     child: _buildInfoRow(
-                      icon: Icons.family_restroom,
-                      title: 'Connected Family Members',
-                      value: '${senior.connectedFamilyIds.length}',
+                          icon: Icons.family_restroom,
+                          title: 'Connected Family Members',
+                          value: '${senior.connectedFamilyIds.length}',
                       iconColor: theme.primaryColor,
                     ),
                   ),
@@ -662,9 +662,9 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                                     style: TextStyle(
                                       fontSize: 16,
                                       color: Colors.grey[600],
-                                    ),
                                   ),
-                                ],
+                                ),
+                              ],
                               ),
                             )
                           : Column(
@@ -717,12 +717,12 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                                 ),
                                 Expanded(
                                   child: ListView.builder(
-                                    controller: _scrollController,
+                              controller: _scrollController,
                                     padding: EdgeInsets.all(16),
-                                    itemCount: _needsList.length,
-                                    itemBuilder: (context, index) {
-                                      final need = _needsList[index];
-                                      final isHighlighted = need.id == (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?)?['needId'];
+                              itemCount: _needsList.length,
+                              itemBuilder: (context, index) {
+                                final need = _needsList[index];
+                                final isHighlighted = need.id == (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?)?['needId'];
                                       return Card(
                                         key: _needKeys[need.id],
                                         elevation: 4,
@@ -739,27 +739,27 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                                               context,
                                               MaterialPageRoute(
                                                 builder: (context) => NeedDetailsScreen(
-                                                  need: need,
-                                                  seniorName: senior.name,
-                                                  onStatusChange: (newStatus) async {
-                                                    try {
-                                                      final dbService = Provider.of<DatabaseService>(
-                                                        context,
-                                                        listen: false,
-                                                      );
-                                                      
-                                                      final updatedNeed = need.copyWith(
-                                                        status: newStatus,
-                                                        assignedToId: familyMember.id,
-                                                      );
-                                                      
-                                                      final success = await dbService.updateNeed(updatedNeed);
-                                                      
-                                                      if (success) {
-                                                        _loadNeeds();
-                                                      } else {
-                                                        if (!mounted) return;
-                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                  need: need,
+                                  seniorName: senior.name,
+                                  onStatusChange: (newStatus) async {
+                                    try {
+                                      final dbService = Provider.of<DatabaseService>(
+                                        context,
+                                        listen: false,
+                                      );
+                                      
+                                      final updatedNeed = need.copyWith(
+                                        status: newStatus,
+                                        assignedToId: familyMember.id,
+                                      );
+                                      
+                                      final success = await dbService.updateNeed(updatedNeed);
+                                      
+                                      if (success) {
+                                        _loadNeeds();
+                                      } else {
+                                        if (!mounted) return;
+                                        ScaffoldMessenger.of(context).showSnackBar(
                                                           SnackBar(
                                                             content: Row(
                                                               children: [
@@ -773,13 +773,13 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                                                             shape: RoundedRectangleBorder(
                                                               borderRadius: BorderRadius.circular(12),
                                                             ),
-                                                          ),
-                                                        );
-                                                      }
-                                                    } catch (e) {
-                                                      if (!mounted) return;
-                                                      ScaffoldMessenger.of(context).showSnackBar(
-                                                        SnackBar(
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (!mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
                                                           content: Row(
                                                             children: [
                                                               Icon(Icons.error_outline, color: Colors.white),
@@ -792,10 +792,10 @@ class _SeniorProfileScreenState extends State<SeniorProfileScreen> with SingleTi
                                                           shape: RoundedRectangleBorder(
                                                             borderRadius: BorderRadius.circular(12),
                                                           ),
-                                                        ),
-                                                      );
-                                                    }
-                                                  },
+                                        ),
+                                      );
+                                    }
+                                  },
                                                 ),
                                               ),
                                             );

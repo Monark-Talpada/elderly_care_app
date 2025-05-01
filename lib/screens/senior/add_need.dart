@@ -186,249 +186,460 @@ class _AddNeedScreenState extends State<AddNeedScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Need' : 'Add New Need'),
+        title: Text(
+          _isEditing ? 'Edit Need' : 'Add New Need',
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+          ),
+        ),
+        elevation: 0,
+        backgroundColor: theme.primaryColor,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextFormField(
-                      controller: _titleController,
-                      decoration: const InputDecoration(
-                        labelText: 'Title',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.title),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter a title';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _descriptionController,
-                      decoration: const InputDecoration(
-                        labelText: 'Description',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.description),
-                        alignLabelWithHint: true,
-                      ),
-                      maxLines: 3,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter a description';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTypeSelector(),
-                    const SizedBox(height: 16),
-                    _buildDateTimePicker(),
-                    const SizedBox(height: 16),
-                    _buildRecurrenceOptions(),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _saveNeed,
-                        child: Text(
-                          _isEditing ? 'Update Need' : 'Create Need',
-                          style: const TextStyle(fontSize: 16),
+      body: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              theme.primaryColor.withOpacity(0.1),
+              Colors.white,
+            ],
+          ),
+        ),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildCard(
+                        title: 'Need Details',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            TextFormField(
+                              controller: _titleController,
+                              decoration: InputDecoration(
+                                labelText: 'Title',
+                                hintText: 'Enter need title',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: theme.primaryColor.withOpacity(0.3),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: theme.primaryColor,
+                                    width: 2,
+                                  ),
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.title,
+                                  color: theme.primaryColor,
+                                ),
+                                filled: true,
+                                fillColor: theme.primaryColor.withOpacity(0.05),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Please enter a title';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 20),
+                            TextFormField(
+                              controller: _descriptionController,
+                              decoration: InputDecoration(
+                                labelText: 'Description',
+                                hintText: 'Enter need description',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: theme.primaryColor.withOpacity(0.3),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: theme.primaryColor,
+                                    width: 2,
+                                  ),
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.description,
+                                  color: theme.primaryColor,
+                                ),
+                                filled: true,
+                                fillColor: theme.primaryColor.withOpacity(0.05),
+                                alignLabelWithHint: true,
+                              ),
+                              maxLines: 3,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Please enter a description';
+                                }
+                                return null;
+                              },
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      _buildCard(
+                        title: 'Need Type',
+                        child: _buildTypeSelector(),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildCard(
+                        title: 'Schedule',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildDateTimePicker(),
+                            const SizedBox(height: 24),
+                            _buildRecurrenceOptions(),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: _saveNeed,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: theme.primaryColor,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 4,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                _isEditing ? Icons.save : Icons.add_circle,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                _isEditing ? 'Update Need' : 'Create Need',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
+      ),
+    );
+  }
+
+  Widget _buildCard({required String title, required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).primaryColor,
             ),
+          ),
+          const SizedBox(height: 20),
+          child,
+        ],
+      ),
     );
   }
 
   Widget _buildTypeSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Need Type',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8.0,
-          children: [
-            _buildTypeChip(
-              label: 'Medication',
-              icon: Icons.medication,
-              type: NeedType.medication,
-              color: Colors.blue,
-            ),
-            _buildTypeChip(
-              label: 'Appointment',
-              icon: Icons.calendar_today,
-              type: NeedType.appointment,
-              color: Colors.purple,
-            ),
-            _buildTypeChip(
-              label: 'Grocery',
-              icon: Icons.shopping_basket,
-              type: NeedType.grocery,
-              color: Colors.green,
-            ),
-            _buildTypeChip(
-              label: 'Other',
-              icon: Icons.more_horiz,
-              type: NeedType.other,
-              color: Colors.orange,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: NeedType.values.map((type) {
+        final bool isSelected = type == _selectedType;
+        final IconData icon;
+        final String label;
+        final Color color;
 
-  Widget _buildTypeChip({
-    required String label,
-    required IconData icon,
-    required NeedType type,
-    required Color color,
-  }) {
-    final isSelected = _selectedType == type;
-    
-    return FilterChip(
-      label: Text(label),
-      avatar: Icon(
-        icon,
-        color: isSelected ? Colors.white : color,
-        size: 18,
-      ),
-      selected: isSelected,
-      onSelected: (selected) {
-        setState(() {
-          _selectedType = type;
-        });
-      },
-      backgroundColor: Colors.grey[200],
-      selectedColor: color,
-      labelStyle: TextStyle(
-        color: isSelected ? Colors.white : Colors.black,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-      ),
+        switch (type) {
+          case NeedType.medication:
+            icon = Icons.medication;
+            label = 'Medication';
+            color = Colors.blue;
+            break;
+          case NeedType.appointment:
+            icon = Icons.calendar_today;
+            label = 'Appointment';
+            color = Colors.purple;
+            break;
+          case NeedType.grocery:
+            icon = Icons.shopping_basket;
+            label = 'Grocery';
+            color = Colors.green;
+            break;
+          case NeedType.other:
+            icon = Icons.more_horiz;
+            label = 'Other';
+            color = Colors.orange;
+            break;
+        }
+
+        return InkWell(
+          onTap: () => setState(() => _selectedType = type),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+            decoration: BoxDecoration(
+              color: isSelected ? color.withOpacity(0.1) : Colors.grey[100],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isSelected ? color : Colors.grey[300]!,
+                width: isSelected ? 2 : 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  color: isSelected ? color : Colors.grey[600],
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? color : Colors.grey[600],
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
   Widget _buildDateTimePicker() {
+    final theme = Theme.of(context);
+    
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Due Date and Time',
-          style: Theme.of(context).textTheme.titleMedium,
+        InkWell(
+          onTap: () => _selectDate(context),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.primaryColor.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: theme.primaryColor.withOpacity(0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.calendar_today,
+                  color: theme.primaryColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Date',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        DateFormat('EEEE, MMMM d, y').format(_selectedDate),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: InkWell(
-                onTap: () => _selectDate(context),
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    prefixIcon: Icon(Icons.calendar_month),
-                  ),
-                  child: Text(
-                    DateFormat('EEE, MMM d, yyyy').format(_selectedDate),
-                  ),
-                ),
+        const SizedBox(height: 16),
+        InkWell(
+          onTap: () => _selectTime(context),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.primaryColor.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: theme.primaryColor.withOpacity(0.3),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: InkWell(
-                onTap: () => _selectTime(context),
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    prefixIcon: Icon(Icons.access_time),
-                  ),
-                  child: Text(
-                    _selectedTime.format(context),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.access_time,
+                  color: theme.primaryColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Time',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _selectedTime.format(context),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ],
     );
   }
 
   Widget _buildRecurrenceOptions() {
+    final theme = Theme.of(context);
+    
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Checkbox(
-              value: _isRecurring,
-              onChanged: (value) {
-                setState(() {
-                  _isRecurring = value ?? false;
-                });
-              },
+        SwitchListTile(
+          title: const Text(
+            'Recurring Need',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
             ),
-            const Text('This is a recurring need'),
-          ],
+          ),
+          subtitle: const Text(
+            'Enable if this need repeats regularly',
+            style: TextStyle(fontSize: 14),
+          ),
+          value: _isRecurring,
+          onChanged: (value) => setState(() => _isRecurring = value),
+          activeColor: theme.primaryColor,
+          contentPadding: EdgeInsets.zero,
         ),
         if (_isRecurring) ...[
-          const SizedBox(height: 8),
-          Text(
-            'Repeat',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
-            value: _recurrenceRule,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.repeat),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.primaryColor.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: theme.primaryColor.withOpacity(0.3),
+              ),
             ),
-            items: [
-              'Daily',
-              'Weekly',
-              'Every 2 weeks',
-              'Monthly',
-            ].map((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Text(value),
-              );
-            }).toList(),
-            onChanged: (newValue) {
-              if (newValue != null) {
-                setState(() {
-                  _recurrenceRule = newValue;
-                });
-              }
-            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Recurrence Pattern',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _recurrenceRule,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: "Daily", child: Text("Daily")),
+                    DropdownMenuItem(value: "Weekly", child: Text("Weekly")),
+                    DropdownMenuItem(value: "Monthly", child: Text("Monthly")),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _recurrenceRule = value);
+                    }
+                  },
+                ),
+              ],
+            ),
           ),
         ],
       ],

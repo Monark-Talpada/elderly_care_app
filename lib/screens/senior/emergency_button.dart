@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:intl/intl.dart';
 
 class EmergencyButtonScreen extends StatefulWidget {
   const EmergencyButtonScreen({Key? key}) : super(key: key);
@@ -230,64 +231,207 @@ class _EmergencyButtonScreenState extends State<EmergencyButtonScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final size = MediaQuery.of(context).size;
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Emergency Button'),
-        backgroundColor: _emergencyActive ? Colors.red : Colors.blue,
+        title: const Text(
+          'Emergency Button',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+          ),
+        ),
+        elevation: 0,
+        backgroundColor: _emergencyActive ? Colors.red.shade700 : theme.primaryColor,
       ),
-      body: Center(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              _emergencyActive ? Colors.red.shade50 : theme.primaryColor.withOpacity(0.1),
+              Colors.white,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              _emergencyActive ? 'EMERGENCY ACTIVE' : 'Press for Emergency',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: _emergencyActive ? Colors.red : Colors.black,
-              ),
-            ),
-            const SizedBox(height: 30),
-            _loading
-                ? const CircularProgressIndicator()
-                : GestureDetector(
-                    onTap: _emergencyActive ? _cancelEmergency : _triggerEmergency,
-                    child: Container(
-                      width: 200,
-                      height: 200,
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _emergencyActive ? Colors.green : Colors.red,
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            spreadRadius: 5,
-                            blurRadius: 7,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
-                      child: Center(
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _emergencyActive ? Icons.warning_amber_rounded : Icons.emergency,
+                        size: 80,
+                        color: _emergencyActive ? Colors.red.shade700 : theme.primaryColor,
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        _emergencyActive ? 'EMERGENCY ACTIVE' : 'Emergency Alert',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: _emergencyActive ? Colors.red.shade700 : theme.primaryColor,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
                         child: Text(
-                          _emergencyActive ? 'CANCEL' : 'HELP',
+                          _emergencyActive
+                              ? 'Your emergency alert has been sent to all connected family members. They have been notified of your situation.'
+                              : 'Press the button below to send an emergency alert to all your connected family members.',
+                          textAlign: TextAlign.center,
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Colors.black87,
+                            height: 1.4,
                           ),
                         ),
                       ),
+                      const SizedBox(height: 24),
+                      if (_loading)
+                        const CircularProgressIndicator()
+                      else
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _emergencyActive ? _cancelEmergency : _triggerEmergency,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _emergencyActive ? Colors.red.shade700 : Colors.red,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 4,
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _emergencyActive ? Icons.cancel_outlined : Icons.emergency,
+                                    size: 24,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _emergencyActive ? 'Cancel Emergency' : 'Send Emergency Alert',
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (_emergencyActive) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.red.shade200,
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Emergency Information',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        if (currentPosition != null) ...[
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                color: Colors.red.shade700,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Your location has been shared with family members',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.access_time,
+                              color: Colors.red.shade700,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Emergency started at ${DateFormat('h:mm a').format(DateTime.now())}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-            const SizedBox(height: 30),
-            Text(
-              _emergencyActive
-                  ? 'Press the button to cancel the emergency'
-                  : 'Press the button to send an emergency alert to your family members',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
+                ],
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

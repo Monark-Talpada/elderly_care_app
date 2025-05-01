@@ -158,12 +158,14 @@ class TimeSlot {
   final DateTime endTime;
   final bool isBooked;
   final String? bookedById;
+  final String? location;
 
   TimeSlot({
     required this.startTime,
     required this.endTime,
     this.isBooked = false,
     this.bookedById,
+    this.location,
   });
 
   factory TimeSlot.fromMap(Map<String, dynamic> map) {
@@ -206,6 +208,7 @@ class TimeSlot {
       endTime: parseEndTime,
       isBooked: map['isBooked'] ?? false,
       bookedById: map['bookedById'],
+      location: map['location'],
     );
   }
 
@@ -215,6 +218,7 @@ class TimeSlot {
       'endTime': Timestamp.fromDate(endTime),
       'isBooked': isBooked,
       'bookedById': bookedById,
+      'location': location,
     };
   }
 
@@ -230,12 +234,14 @@ class TimeSlot {
     DateTime? endTime,
     bool? isBooked,
     String? bookedById,
+    String? location,
   }) {
     return TimeSlot(
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
       isBooked: isBooked ?? this.isBooked,
       bookedById: bookedById ?? this.bookedById,
+      location: location ?? this.location,
     );
   }
 
@@ -247,6 +253,7 @@ class TimeSlot {
     required int endMinute,
     bool isBooked = false,
     String? bookedById,
+    String? location,
   }) {
     final now = DateTime.now();
     return TimeSlot(
@@ -266,6 +273,7 @@ class TimeSlot {
       ),
       isBooked: isBooked,
       bookedById: bookedById,
+      location: location,
     );
   }
 }

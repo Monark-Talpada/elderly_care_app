@@ -5,6 +5,7 @@ import 'package:elderly_care_app/models/need_model.dart';
 import 'package:elderly_care_app/services/auth_service.dart';
 import 'package:elderly_care_app/services/database_service.dart';
 import 'package:intl/intl.dart';
+import 'package:elderly_care_app/screens/senior/need_details.dart';
 
 class DailyNeedsScreen extends StatefulWidget {
   const DailyNeedsScreen({Key? key}) : super(key: key);
@@ -27,7 +28,7 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
     super.initState();
     _authService = Provider.of<AuthService>(context, listen: false);
     _databaseService = Provider.of<DatabaseService>(context, listen: false);
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _loadNeeds();
   }
 
@@ -41,11 +42,9 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
     try {
       final user = _authService.currentUser;
       if (user != null) {
-        // Get current senior using getCurrentSenior or getSeniorById
         final senior = await _databaseService.getCurrentSenior() ?? 
                       await _databaseService.getSeniorById(user.id);
         
-        // Get needs for the current user
         final needs = await _databaseService.getSeniorNeeds(user.id);
         
         if (mounted) {
@@ -75,8 +74,6 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
       case 1: // Completed
         return _allNeeds.where((need) => 
             need.status == NeedStatus.completed).toList();
-      case 2: // All
-        return _allNeeds;
       default:
         return _allNeeds;
     }
@@ -168,44 +165,71 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
       );
     }
 
+    final theme = Theme.of(context);
     final filteredNeeds = _getFilteredNeeds();
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Daily Needs'),
+        title: const Text(
+          'Daily Needs',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+            color: Colors.white,
+          ),
+        ),
+        elevation: 0,
+        backgroundColor: theme.primaryColor,
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
           tabs: const [
             Tab(text: 'Active'),
             Tab(text: 'Completed'),
-            Tab(text: 'All'),
           ],
           onTap: (_) {
             setState(() {});  // Refresh to show newly filtered list
           },
         ),
       ),
-      body: SafeArea(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              theme.primaryColor.withOpacity(0.1),
+              Colors.white,
+            ],
+          ),
+        ),
         child: RefreshIndicator(
           onRefresh: _loadNeeds,
           child: filteredNeeds.isEmpty
-              ? ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.4,
-                      child: Center(
-                        child: Text(
-                          'No needs found',
-                          style: Theme.of(context).textTheme.titleMedium,
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.notifications_none,
+                        size: 48,
+                        color: Colors.grey[300],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No needs found',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[600],
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 )
               : ListView.builder(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
                   itemCount: filteredNeeds.length,
                   itemBuilder: (context, index) => _buildNeedCard(filteredNeeds[index]),
                 ),
@@ -218,8 +242,8 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
             _loadNeeds();
           }
         },
+        backgroundColor: theme.primaryColor,
         child: const Icon(Icons.add),
-        tooltip: 'Add New Need',
       ),
     );
   }
@@ -227,7 +251,7 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
   Widget _buildNeedCard(DailyNeed need) {
     final IconData icon;
     final Color color;
-    
+
     switch (need.type) {
       case NeedType.medication:
         icon = Icons.medication;
@@ -249,188 +273,136 @@ class _DailyNeedsScreenState extends State<DailyNeedsScreen> with SingleTickerPr
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ExpansionTile(
-        leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.2),
-          child: Icon(icon, color: color),
-        ),
-        title: Text(
-          need.title,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-          overflow: TextOverflow.ellipsis,
-          maxLines: 1,
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text(
-              'Due: ${DateFormat('MMM d, h:mm a').format(need.dueDate)}',
-              style: TextStyle(
-                color: need.dueDate.isBefore(DateTime.now()) && 
-                      need.status != NeedStatus.completed ? 
-                      Colors.red : null,
-              ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SeniorNeedDetailsScreen(need: need),
             ),
-            const SizedBox(height: 4),
-            _buildStatusChip(need.status),
-          ],
-        ),
-        childrenPadding: const EdgeInsets.all(16.0),
-        expandedCrossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          );
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
             children: [
-              Text(
-                'Description:',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: 100,
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
                 ),
-                child: SingleChildScrollView(
-                  child: Text(need.description),
+                child: Center(
+                  child: Icon(
+                    icon,
+                    color: color,
+                    size: 28,
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
-              if (need.isRecurring) ...[
-                _buildInfoRow(Icons.repeat, 'Recurring: ${need.recurrenceRule ?? 'Yes'}'),
-                const SizedBox(height: 16),
-              ],
-              if (need.assignedToId != null) ...[
-                _buildInfoRow(Icons.person, 'Assigned to: ${need.assignedToId}'),
-                const SizedBox(height: 16),
-              ],
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                alignment: WrapAlignment.end,
-                children: [
-                  if (need.status != NeedStatus.completed)
-                    TextButton.icon(
-                      icon: const Icon(Icons.check),
-                      label: const Text('Complete'),
-                      onPressed: () {
-                        _updateNeedStatus(need, NeedStatus.completed);
-                      },
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.green,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      need.title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  TextButton.icon(
-                    icon: const Icon(Icons.edit),
-                    label: const Text('Edit'),
-                    onPressed: () async {
-                      final result = await Navigator.pushNamed(
-                        context, 
-                        '/senior/edit_need',
-                        arguments: need,
-                      );
-                      if (result == true) {
-                        _loadNeeds();
-                      }
-                    },
-                  ),
-                  TextButton.icon(
-                    icon: const Icon(Icons.delete),
-                    label: const Text('Delete'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.red,
+                    const SizedBox(height: 6),
+                    Text(
+                      need.description.length > 30
+                          ? '${need.description.substring(0, 30)}...'
+                          : need.description,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
                     ),
-                    onPressed: () {
-                      _showDeleteConfirmation(need);
-                    },
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.access_time,
+                          size: 16,
+                          color: Colors.grey[600],
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          DateFormat('MMM d, h:mm a').format(need.dueDate),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
+              _getStatusChip(need.status),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Colors.grey),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              color: Colors.grey[700],
-              fontStyle: FontStyle.italic,
-            ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatusChip(NeedStatus status) {
+  Widget _getStatusChip(NeedStatus status) {
     Color color;
     String label;
-    
+    IconData icon;
+
     switch (status) {
       case NeedStatus.pending:
         color = Colors.orange;
         label = 'Pending';
+        icon = Icons.pending;
         break;
       case NeedStatus.inProgress:
         color = Colors.blue;
         label = 'In Progress';
+        icon = Icons.hourglass_empty;
         break;
       case NeedStatus.completed:
         color = Colors.green;
         label = 'Completed';
+        icon = Icons.check_circle;
         break;
       case NeedStatus.cancelled:
         color = Colors.red;
         label = 'Cancelled';
+        icon = Icons.cancel;
         break;
     }
-    
-    return Chip(
-      label: Text(
-        label,
-        style: TextStyle(color: Colors.white, fontSize: 12),
-      ),
-      backgroundColor: color,
-      padding: EdgeInsets.zero,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      visualDensity: VisualDensity.compact,
-    );
-  }
 
-  void _showDeleteConfirmation(DailyNeed need) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: Text('Are you sure you want to delete "${need.title}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _deleteNeed(need);
-            },
-            child: const Text('DELETE'),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
             ),
           ),
         ],

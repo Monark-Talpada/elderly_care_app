@@ -5,6 +5,8 @@ import 'package:elderly_care_app/models/volunteer_model.dart';
 import 'package:elderly_care_app/models/review_model.dart';
 import 'package:elderly_care_app/widgets/review_dialog.dart';
 import 'package:elderly_care_app/services/database_service.dart';
+import 'package:elderly_care_app/screens/senior/appointment_details.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SeniorAppointmentsScreen extends StatefulWidget {
   final String seniorId;
@@ -27,28 +29,28 @@ class _SeniorAppointmentsScreenState extends State<SeniorAppointmentsScreen> {
   }
 
   Future<void> _loadAppointments() async {
-  setState(() {
-    _isLoading = true;
-  });
-  _databaseService.getSeniorAppointments(widget.seniorId).listen(
-    (appointments) {
-      print('Received ${appointments.length} appointments: ${appointments.map((a) => a.status).toList()}');
-      setState(() {
-        _appointments = appointments;
-        _isLoading = false;
-      });
-      for (var appointment in appointments) {
-        _loadVolunteerProfile(appointment.volunteerId);
-      }
-    },
-    onError: (error) {
-      print('Stream error: $error');
-      setState(() {
-        _isLoading = false;
-      });
-    },
-  );
-}
+    setState(() {
+      _isLoading = true;
+    });
+    _databaseService.getSeniorAppointments(widget.seniorId).listen(
+      (appointments) {
+        print('Received ${appointments.length} appointments: ${appointments.map((a) => a.status).toList()}');
+        setState(() {
+          _appointments = appointments;
+          _isLoading = false;
+        });
+        for (var appointment in appointments) {
+          _loadVolunteerProfile(appointment.volunteerId);
+        }
+      },
+      onError: (error) {
+        print('Stream error: $error');
+        setState(() {
+          _isLoading = false;
+        });
+      },
+    );
+  }
 
   Future<void> _loadVolunteerProfile(String volunteerId) async {
     if (!_volunteerProfiles.containsKey(volunteerId)) {
@@ -137,356 +139,276 @@ class _SeniorAppointmentsScreenState extends State<SeniorAppointmentsScreen> {
     );
   }
 
-  // Display information about the volunteer
-  Widget _buildVolunteerInfo(String volunteerId) {
-    if (_volunteerProfiles.containsKey(volunteerId)) {
-      Volunteer volunteer = _volunteerProfiles[volunteerId]!;
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Volunteer: ${volunteer.name}',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          if (volunteer.phoneNumber != null)
-            Text('Phone: ${volunteer.phoneNumber}'),
-        ],
-      );
-    } else {
-      return const Text('Loading volunteer information...');
-    }
-  }
-
-  // Get the appropriate action button based on appointment status
-  Widget _buildActionButton(Appointment appointment) {
-    switch (appointment.status) {
-      case AppointmentStatus.waitingToStart:
-        return ElevatedButton(
-          onPressed: () {
-            _showConfirmationDialog(
-              context,
-              'Start Appointment',
-              'Do you want to confirm the start of this appointment?',
-              () => _confirmStartAppointment(appointment),
-            );
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green,
-          ),
-          child: const Text('Confirm Start'),
-        );
-      case AppointmentStatus.waitingToEnd:
-        return ElevatedButton(
-          onPressed: () {
-            _showConfirmationDialog(
-              context,
-              'End Appointment',
-              'Do you want to confirm the end of this appointment?',
-              () => _confirmEndAppointment(appointment),
-            );
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.orange,
-          ),
-          child: const Text('Confirm End'),
-        );
-      case AppointmentStatus.inProgress:
-        return Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.blue[100],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Text(
-            'In Progress',
-            style: TextStyle(color: Colors.blue),
-          ),
-        );
-      case AppointmentStatus.completed:
-        return Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.green[100],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Text(
-            'Completed',
-            style: TextStyle(color: Colors.green),
-          ),
-        );
-      case AppointmentStatus.cancelled:
-        return Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.red[100],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Text(
-            'Cancelled',
-            style: TextStyle(color: Colors.red),
-          ),
-        );
-      default:
-        return Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Text(
-            'Scheduled',
-            style: TextStyle(color: Colors.grey),
-          ),
-        );
-    }
-  }
-
-  // Format appointment time range
-  String _formatTimeRange(DateTime start, DateTime end) {
-    final DateFormat dateFormat = DateFormat('MMM d, yyyy');
-    final DateFormat timeFormat = DateFormat('h:mm a');
-    
-    if (start.day == end.day && start.month == end.month && start.year == end.year) {
-      // Same day
-      return '${dateFormat.format(start)} from ${timeFormat.format(start)} to ${timeFormat.format(end)}';
-    } else {
-      // Different days
-      return '${dateFormat.format(start)} ${timeFormat.format(start)} to ${dateFormat.format(end)} ${timeFormat.format(end)}';
-    }
-  }
-
-  // Build appointment card
   Widget _buildAppointmentCard(Appointment appointment) {
+    final theme = Theme.of(context);
+    final volunteer = _volunteerProfiles[appointment.volunteerId];
     final isCompleted = appointment.status == AppointmentStatus.completed;
     final isCancelled = appointment.status == AppointmentStatus.cancelled;
     final isUpcoming = appointment.status == AppointmentStatus.scheduled || appointment.status == AppointmentStatus.inProgress;
     final isInProgress = appointment.status == AppointmentStatus.inProgress;
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+      color: Colors.white,
+      child: InkWell(
+        onTap: () {
+          if (volunteer != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AppointmentDetailsScreen(
+                  appointment: appointment,
+                  volunteer: volunteer,
+                ),
+              ),
+            );
+          }
+        },
+        borderRadius: BorderRadius.circular(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  _volunteerProfiles[appointment.volunteerId]?.name ?? 'Volunteer',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    theme.primaryColor,
+                    theme.primaryColor.withOpacity(0.8),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                _buildStatusChip(appointment.status),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildInfoRow(
-              Icons.calendar_today,
-              'Date',
-              DateFormat('MMM dd, yyyy').format(appointment.startTime),
-            ),
-            const SizedBox(height: 8),
-            _buildInfoRow(
-              Icons.access_time,
-              'Time',
-              '${DateFormat.jm().format(appointment.startTime)} - ${DateFormat.jm().format(appointment.endTime)}',
-            ),
-            const SizedBox(height: 8),
-            _buildInfoRow(
-              Icons.location_on,
-              'Location',
-              _volunteerProfiles[appointment.volunteerId]?.servingAreas?.first ?? 'Location not specified',
-            ),
-            const SizedBox(height: 16),
-            if (isCompleted)
-              FutureBuilder<Review?>(
-                future: DatabaseService().getAppointmentReview(appointment.id),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  
-                  if (snapshot.hasData && snapshot.data != null) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Your Review',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  topRight: Radius.circular(12),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            volunteer?.name.isNotEmpty == true ? volunteer!.name[0].toUpperCase() : 'V',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            ...List.generate(
-                              5,
-                              (index) => Icon(
-                                Icons.star,
-                                size: 20,
-                                color: index < snapshot.data!.rating
-                                    ? Colors.amber
-                                    : Colors.grey,
+                      ),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            volunteer?.name ?? 'Volunteer',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          if (volunteer?.phoneNumber != null)
+                            Text(
+                              volunteer!.phoneNumber!,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.white70,
                               ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(snapshot.data!.feedback),
-                      ],
-                    );
-                  }
-                  
-                  return ElevatedButton.icon(
-                    onPressed: () async {
-                      final result = await showDialog<bool>(
-                        context: context,
-                        builder: (context) => ReviewDialog(
-                          appointmentId: appointment.id,
-                          volunteerId: appointment.volunteerId,
-                          seniorId: appointment.seniorId,
-                        ),
-                      );
-                      
-                      if (result == true) {
-                        setState(() {});
-                      }
-                    },
-                    icon: const Icon(Icons.star),
-                    label: const Text('Rate & Review'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber,
-                      foregroundColor: Colors.white,
-                    ),
-                  );
-                },
-              ),
-            if (isUpcoming)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => _cancelAppointment(appointment),
-                    child: const Text('Cancel'),
+                        ],
+                      ),
+                    ],
                   ),
+                  _buildStatusChip(appointment.status),
                 ],
               ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildInfoRow(
+                    Icons.calendar_today,
+                    'Date',
+                    DateFormat('EEEE, MMMM d, y').format(appointment.startTime),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildInfoRow(
+                    Icons.access_time,
+                    'Time',
+                    '${DateFormat.jm().format(appointment.startTime)} - ${DateFormat.jm().format(appointment.endTime)}',
+                  ),
+                  const SizedBox(height: 8),
+                  _buildInfoRow(
+                    Icons.location_on,
+                    'Location',
+                    volunteer?.servingAreas?.first ?? 'Location not specified',
+                  ),
+                  if (isCompleted) ...[
+                    const SizedBox(height: 12),
+                    FutureBuilder<Review?>(
+                      future: DatabaseService().getAppointmentReview(appointment.id),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        
+                        if (snapshot.hasData && snapshot.data != null) {
+                          return Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.amber.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Your Review',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    ...List.generate(
+                                      5,
+                                      (index) => Icon(
+                                        Icons.star,
+                                        size: 16,
+                                        color: index < snapshot.data!.rating
+                                            ? Colors.amber
+                                            : Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  snapshot.data!.feedback,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        
+                        return ElevatedButton.icon(
+                          onPressed: () async {
+                            final result = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => ReviewDialog(
+                                appointmentId: appointment.id,
+                                volunteerId: appointment.volunteerId,
+                                seniorId: appointment.seniorId,
+                              ),
+                            );
+                            
+                            if (result == true) {
+                              setState(() {});
+                            }
+                          },
+                          icon: const Icon(Icons.star, size: 16),
+                          label: const Text('Rate & Review', style: TextStyle(fontSize: 14)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.amber,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                  if (isUpcoming) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => _cancelAppointment(appointment),
+                          icon: const Icon(Icons.cancel, size: 16),
+                          label: const Text('Cancel', style: TextStyle(fontSize: 14)),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  // Format duration from minutes to hours and minutes
-  String _formatDuration(int minutes) {
-    if (minutes < 60) {
-      return '$minutes minutes';
-    } else {
-      int hours = minutes ~/ 60;
-      int remainingMinutes = minutes % 60;
-      if (remainingMinutes == 0) {
-        return '$hours hour${hours > 1 ? 's' : ''}';
-      } else {
-        return '$hours hour${hours > 1 ? 's' : ''} $remainingMinutes minute${remainingMinutes > 1 ? 's' : ''}';
-      }
-    }
-  }
-
-  // Build status badge
-  Widget _buildStatusBadge(AppointmentStatus status) {
-    Color color;
-    String label;
-    
-    switch (status) {
-      case AppointmentStatus.scheduled:
-        color = Colors.grey;
-        label = 'Scheduled';
-        break;
-      case AppointmentStatus.waitingToStart:
-        color = Colors.amber;
-        label = 'Start Requested';
-        break;
-      case AppointmentStatus.inProgress:
-        color = Colors.blue;
-        label = 'In Progress';
-        break;
-      case AppointmentStatus.waitingToEnd:
-        color = Colors.orange;
-        label = 'End Requested';
-        break;
-      case AppointmentStatus.completed:
-        color = Colors.green;
-        label = 'Completed';
-        break;
-      case AppointmentStatus.cancelled:
-        color = Colors.red;
-        label = 'Cancelled';
-        break;
-      default:
-        color = Colors.grey;
-        label = 'Unknown';
-    }
-    
+  Widget _buildInfoRow(IconData icon, String label, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: Theme.of(context).primaryColor.withOpacity(0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color),
+        border: Border.all(
+          color: Theme.of(context).primaryColor.withOpacity(0.3),
+        ),
       ),
-      child: Text(
-        label,
-        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Theme.of(context).primaryColor),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
-  }
-
-  // Group appointments by date
-  Map<String, List<Appointment>> _groupAppointmentsByDate() {
-    Map<String, List<Appointment>> grouped = {};
-    final DateFormat formatter = DateFormat('yyyy-MM-dd');
-    
-    for (var appointment in _appointments) {
-      final String dateKey = formatter.format(appointment.startTime);
-      if (!grouped.containsKey(dateKey)) {
-        grouped[dateKey] = [];
-      }
-      grouped[dateKey]!.add(appointment);
-    }
-    
-    return grouped;
-  }
-
-  // Filter appointments by status
-  List<Appointment> _getActionRequiredAppointments() {
-    return _appointments.where((appointment) => 
-      appointment.status == AppointmentStatus.waitingToStart || 
-      appointment.status == AppointmentStatus.waitingToEnd
-    ).toList();
-  }
-
-  // Filter appointments by status for upcoming
-  List<Appointment> _getUpcomingAppointments() {
-    return _appointments.where((appointment) => 
-      appointment.status == AppointmentStatus.scheduled || 
-      appointment.status == AppointmentStatus.inProgress
-    ).toList();
-  }
-
-  // Filter appointments by status for past
-  List<Appointment> _getPastAppointments() {
-    return _appointments.where((appointment) => 
-      appointment.status == AppointmentStatus.completed || 
-      appointment.status == AppointmentStatus.cancelled
-    ).toList();
   }
 
   Widget _buildStatusChip(AppointmentStatus status) {
@@ -530,45 +452,25 @@ class _SeniorAppointmentsScreenState extends State<SeniorAppointmentsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withOpacity(0.2),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.5)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 16,
-            color: color,
-          ),
-          const SizedBox(width: 4),
+          Icon(icon, size: 16, color: Colors.white),
+          const SizedBox(width: 6),
           Text(
             label,
-            style: TextStyle(
-              color: color,
+            style: const TextStyle(
+              color: Colors.white,
               fontWeight: FontWeight.bold,
-              fontSize: 14,
+              fontSize: 12,
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: Colors.grey[600]),
-        const SizedBox(width: 8),
-        Text(
-          '$label: ',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.grey[600],
-          ),
-        ),
-        Text(value),
-      ],
     );
   }
 
@@ -596,99 +498,402 @@ class _SeniorAppointmentsScreenState extends State<SeniorAppointmentsScreen> {
     }
   }
 
-  @override
-Widget build(BuildContext context) {
-  return DefaultTabController(
-    length: 3,
-    child: Scaffold(
-      appBar: AppBar(
-        title: const Text('My Appointments'),
-        bottom: TabBar(
-          tabs: [
-            Tab(
-              text: 'Action Required',
-              icon: StreamBuilder<List<Appointment>>(
-                stream: _databaseService.getSeniorAppointments(widget.seniorId),
-                builder: (context, snapshot) {
-                  final actionRequiredAppointments = snapshot.hasData
-                      ? snapshot.data!
-                          .where((appointment) =>
-                              appointment.status ==
-                                  AppointmentStatus.waitingToStart ||
-                              appointment.status ==
-                                  AppointmentStatus.waitingToEnd)
-                          .toList()
-                      : [];
-                  return Badge(
-                    isLabelVisible: actionRequiredAppointments.isNotEmpty,
-                    label: Text('${actionRequiredAppointments.length}'),
-                    child: const Icon(Icons.notification_important),
-                  );
-                },
+  Widget _buildPastAppointmentCard(Appointment appointment) {
+    final volunteer = _volunteerProfiles[appointment.volunteerId];
+    final isCompleted = appointment.status == AppointmentStatus.completed;
+    
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      color: Colors.white,
+      child: InkWell(
+        onTap: () {
+          if (volunteer != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AppointmentDetailsScreen(
+                  appointment: appointment,
+                  volunteer: volunteer,
+                ),
               ),
-            ),
-            const Tab(text: 'Upcoming', icon: Icon(Icons.event)),
-            const Tab(text: 'Past', icon: Icon(Icons.history)),
-          ],
+            );
+          }
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        volunteer?.name.isNotEmpty == true ? volunteer!.name[0].toUpperCase() : 'V',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).primaryColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          volunteer?.name ?? 'Volunteer',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          DateFormat('MMM d, y').format(appointment.startTime),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isCompleted ? Colors.teal.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isCompleted ? Colors.teal.withOpacity(0.3) : Colors.red.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isCompleted ? Icons.check_circle : Icons.cancel,
+                          size: 16,
+                          color: isCompleted ? Colors.teal : Colors.red,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          isCompleted ? 'Completed' : 'Cancelled',
+                          style: TextStyle(
+                            color: isCompleted ? Colors.teal : Colors.red,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (isCompleted) ...[
+                const SizedBox(height: 12),
+                FutureBuilder<Review?>(
+                  future: DatabaseService().getAppointmentReview(appointment.id),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    
+                    if (snapshot.hasData && snapshot.data != null) {
+                      return Row(
+                        children: [
+                          ...List.generate(
+                            5,
+                            (index) => Icon(
+                              Icons.star,
+                              size: 16,
+                              color: index < snapshot.data!.rating
+                                  ? Colors.amber
+                                  : Colors.grey,
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    
+                    return ElevatedButton.icon(
+                      onPressed: () async {
+                        final result = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => ReviewDialog(
+                            appointmentId: appointment.id,
+                            volunteerId: appointment.volunteerId,
+                            seniorId: appointment.seniorId,
+                          ),
+                        );
+                        
+                        if (result == true) {
+                          setState(() {});
+                        }
+                      },
+                      icon: const Icon(Icons.star, size: 16),
+                      label: const Text('Rate & Review'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amber,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ],
+          ),
         ),
       ),
-      body: StreamBuilder<List<Appointment>>(
-        stream: _databaseService.getSeniorAppointments(widget.seniorId),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          final appointments = snapshot.data ?? [];
-          final actionRequiredAppointments = _getActionRequiredAppointments();
-          final upcomingAppointments = _getUpcomingAppointments();
-          final pastAppointments = _getPastAppointments();
+    );
+  }
 
-          return TabBarView(
-            children: [
-              // Action Required Tab
-              actionRequiredAppointments.isEmpty
-                  ? const Center(child: Text('No actions required'))
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: actionRequiredAppointments.length,
-                      itemBuilder: (context, index) {
-                        return _buildAppointmentCard(
-                            actionRequiredAppointments[index]);
-                      },
-                    ),
-              // Upcoming Tab
-              upcomingAppointments.isEmpty
-                  ? const Center(child: Text('No upcoming appointments'))
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: upcomingAppointments.length,
-                      itemBuilder: (context, index) {
-                        return _buildAppointmentCard(
-                            upcomingAppointments[index]);
-                      },
-                    ),
-              // Past Tab
-              pastAppointments.isEmpty
-                  ? const Center(child: Text('No past appointments'))
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: pastAppointments.length,
-                      itemBuilder: (context, index) {
-                        return _buildAppointmentCard(pastAppointments[index]);
-                      },
-                    ),
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'My Appointments',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 22,
+              color: Colors.white,
+            ),
+          ),
+          elevation: 0,
+          backgroundColor: theme.primaryColor,
+          bottom: TabBar(
+            indicatorColor: Colors.white,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            tabs: [
+              Tab(
+                text: 'Action Required',
+                icon: StreamBuilder<List<Appointment>>(
+                  stream: _databaseService.getSeniorAppointments(widget.seniorId),
+                  builder: (context, snapshot) {
+                    final actionRequiredAppointments = snapshot.hasData
+                        ? snapshot.data!
+                            .where((appointment) =>
+                                appointment.status ==
+                                    AppointmentStatus.waitingToStart ||
+                                appointment.status ==
+                                    AppointmentStatus.waitingToEnd)
+                            .toList()
+                        : [];
+                    return Badge(
+                      isLabelVisible: actionRequiredAppointments.isNotEmpty,
+                      label: Text('${actionRequiredAppointments.length}'),
+                      child: const Icon(Icons.notification_important),
+                    );
+                  },
+                ),
+              ),
+              const Tab(text: 'Upcoming', icon: Icon(Icons.event)),
+              const Tab(text: 'Past', icon: Icon(Icons.history)),
             ],
-          );
-        },
+          ),
+        ),
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                theme.primaryColor.withOpacity(0.1),
+                Colors.white,
+              ],
+            ),
+          ),
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : StreamBuilder<List<Appointment>>(
+                  stream: _databaseService.getSeniorAppointments(widget.seniorId),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 48,
+                              color: Colors.red[300],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Error loading appointments',
+                              style: TextStyle(
+                                color: Colors.red[700],
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: _loadAppointments,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Retry'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: theme.primaryColor,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    
+                    final appointments = snapshot.data ?? [];
+                    final actionRequiredAppointments = appointments.where((appointment) => 
+                      appointment.status == AppointmentStatus.waitingToStart || 
+                      appointment.status == AppointmentStatus.waitingToEnd
+                    ).toList();
+                    
+                    final upcomingAppointments = appointments.where((appointment) => 
+                      appointment.status == AppointmentStatus.scheduled || 
+                      appointment.status == AppointmentStatus.inProgress
+                    ).toList();
+                    
+                    final pastAppointments = appointments.where((appointment) => 
+                      appointment.status == AppointmentStatus.completed || 
+                      appointment.status == AppointmentStatus.cancelled
+                    ).toList();
+
+                    return TabBarView(
+                      children: [
+                        // Action Required Tab
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                          child: actionRequiredAppointments.isEmpty
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.check_circle_outline,
+                                        size: 48,
+                                        color: Colors.green[300],
+                                      ),
+                                      const SizedBox(height: 16),
+                                      const Text(
+                                        'No actions required',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : ListView.builder(
+                                  itemCount: actionRequiredAppointments.length,
+                                  itemBuilder: (context, index) {
+                                    return _buildAppointmentCard(
+                                        actionRequiredAppointments[index]);
+                                  },
+                                ),
+                        ),
+                        // Upcoming Tab
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                          child: upcomingAppointments.isEmpty
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.event_note,
+                                        size: 48,
+                                        color: Colors.blue[300],
+                                      ),
+                                      const SizedBox(height: 16),
+                                      const Text(
+                                        'No upcoming appointments',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : ListView.builder(
+                                  itemCount: upcomingAppointments.length,
+                                  itemBuilder: (context, index) {
+                                    return _buildAppointmentCard(
+                                        upcomingAppointments[index]);
+                                  },
+                                ),
+                        ),
+                        // Past Tab
+                        Container(
+                          padding: const EdgeInsets.only(left: 4, right: 4, top: 12, bottom: 36),
+                          child: pastAppointments.isEmpty
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.history,
+                                        size: 48,
+                                        color: Colors.grey[300],
+                                      ),
+                                      const SizedBox(height: 16),
+                                      const Text(
+                                        'No past appointments',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : ListView.builder(
+                                  itemCount: pastAppointments.length,
+                                  itemBuilder: (context, index) {
+                                    return _buildPastAppointmentCard(pastAppointments[index]);
+                                  },
+                                ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: _loadAppointments,
+          backgroundColor: theme.primaryColor,
+          child: const Icon(Icons.refresh),
+        ),
       ),
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.refresh),
-        onPressed: _loadAppointments,
-      ),
-    ),
-  );
-}
+    );
+  }
 }

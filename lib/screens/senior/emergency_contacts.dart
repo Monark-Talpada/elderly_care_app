@@ -123,123 +123,312 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Emergency Contacts'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: _addEmergencyContact,
+        title: const Text(
+          'Emergency Contacts',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
           ),
-        ],
+        ),
+        elevation: 0,
+        backgroundColor: theme.primaryColor,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _emergencyContacts.isEmpty
-              ? _buildEmptyState()
-              : _buildEmergencyContactsList(),
+          ? Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    theme.primaryColor.withOpacity(0.05),
+                    Colors.white,
+                  ],
+                ),
+              ),
+              child: const Center(child: CircularProgressIndicator()),
+            )
+          : Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    theme.primaryColor.withOpacity(0.05),
+                    Colors.white,
+                  ],
+                ),
+              ),
+              child: _emergencyContacts.isEmpty
+                  ? _buildEmptyState()
+                  : RefreshIndicator(
+                      onRefresh: _loadEmergencyContacts,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _emergencyContacts.length,
+                        itemBuilder: (context, index) {
+                          final contact = _emergencyContacts[index];
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 50,
+                                        height: 50,
+                                        decoration: BoxDecoration(
+                                          color: theme.primaryColor.withOpacity(0.1),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            contact.name.substring(0, 1).toUpperCase(),
+                                            style: TextStyle(
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.bold,
+                                              color: theme.primaryColor,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              contact.name,
+                                              style: const TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            if (contact.relationship != null) ...[
+                                              const SizedBox(height: 4),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 4,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: theme.primaryColor.withOpacity(0.1),
+                                                  borderRadius: BorderRadius.circular(12),
+                                                ),
+                                                child: Text(
+                                                  contact.relationship!,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: theme.primaryColor,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      if (contact.phoneNumber != null)
+                                        IconButton(
+                                          icon: Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: theme.primaryColor.withOpacity(0.1),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              Icons.phone,
+                                              color: theme.primaryColor,
+                                              size: 24,
+                                            ),
+                                          ),
+                                          onPressed: () => _launchCall(contact.phoneNumber!),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[50],
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: Colors.grey[200]!,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.email,
+                                              size: 16,
+                                              color: Colors.grey[600],
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                contact.email,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.grey[700],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        if (contact.phoneNumber != null) ...[
+                                          const SizedBox(height: 8),
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.phone,
+                                                size: 16,
+                                                color: Colors.grey[600],
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                contact.phoneNumber!,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.grey[700],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+            ),
     );
   }
 
   Widget _buildEmptyState() {
+    final theme = Theme.of(context);
+    
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.contact_emergency,
-            size: 80,
-            color: Colors.grey,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'No Emergency Contacts',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: theme.primaryColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.contact_emergency,
+              size: 50,
+              color: theme.primaryColor,
             ),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Add family members or trusted contacts who can help in emergencies.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey),
+          const SizedBox(height: 24),
+          Text(
+            'No Emergency Contacts',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: theme.primaryColor,
+            ),
           ),
           const SizedBox(height: 16),
-          ElevatedButton(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              'Add family members or trusted contacts who can help in emergencies.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
             onPressed: _addEmergencyContact,
-            child: const Text('Add Emergency Contact'),
+            icon: Icon(Icons.person_add, color: theme.primaryColor),
+            label: Text(
+              'Add Emergency Contact',
+              style: TextStyle(color: theme.primaryColor),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              elevation: 2,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: theme.primaryColor),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-    Widget _buildEmergencyContactsList() {
-      return ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _emergencyContacts.length,
-        itemBuilder: (context, index) {
-          final contact = _emergencyContacts[index];
-          return Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            margin: const EdgeInsets.only(bottom: 16),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundImage: contact.photoUrl != null
-                    ? NetworkImage(contact.photoUrl!)
-                    : null,
-                child: contact.photoUrl == null
-                    ? Text(contact.name.substring(0, 1).toUpperCase())
-                    : null,
-              ),
-              title: Text(
-                contact.name,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (contact.relationship != null)
-                    Text(
-                      contact.relationship!,
-                      style: TextStyle(color: Colors.grey[600]),
-                    ),
-                  Text(
-                    contact.phoneNumber ?? 'No phone number',
-                    style: TextStyle(color: Colors.grey[700]),
-                  ),
-                ],
-              ),
-              trailing: IconButton(
-                icon: const Icon(Icons.call, color: Colors.green),
-                onPressed: contact.phoneNumber != null
-                    ? () => _launchCall(contact.phoneNumber!)
-                    : null,
-              ),
-            ),
-          );
-        },
+  void _launchCall(String phoneNumber) async {
+    try {
+      // Clean the phone number - remove spaces and special characters
+      final cleanNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+      
+      // Try to launch the phone dialer
+      final result = await launchUrl(
+        Uri.parse('tel:$cleanNumber'),
+        mode: LaunchMode.externalApplication,
+      );
+      
+      if (!result) {
+        // If the first attempt fails, try with a different format
+        final alternativeResult = await launchUrl(
+          Uri.parse('tel://$cleanNumber'),
+          mode: LaunchMode.externalApplication,
+        );
+        
+        if (!alternativeResult) {
+          throw Exception('Could not launch phone dialer. Please check your device settings.');
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+          action: SnackBarAction(
+            label: 'Settings',
+            textColor: Colors.white,
+            onPressed: () async {
+              // Open app settings to check permissions
+              await launchUrl(
+                Uri.parse('app-settings:'),
+                mode: LaunchMode.externalApplication,
+              );
+            },
+          ),
+        ),
       );
     }
-
-    void _launchCall(String phoneNumber) async {
-      final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
-      if (await canLaunchUrl(phoneUri)) {
-        await launchUrl(phoneUri);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open dialer')),
-        );
-      }
-    }
-
+  }
 
   void _addEmergencyContact() {
     // Navigate to a screen to add a new emergency contact

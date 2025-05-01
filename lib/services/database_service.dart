@@ -10,7 +10,7 @@ import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
 
-class DatabaseService {
+class DatabaseService extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String? userId;
   
@@ -1370,6 +1370,70 @@ Stream<List<Appointment>> getSeniorAppointments(String seniorId) {
     } catch (e) {
       print('Error getting appointment review: $e');
       return null;
+    }
+  }
+
+  // Find available volunteers based on location and time slot
+  Future<List<Volunteer>> findAvailableVolunteers({
+    required String seniorLocation,
+    required TimeSlot timeSlot,
+  }) async {
+    try {
+      // Format date as YYYY-MM-DD to match database structure
+      final String formattedDate = DateFormat('yyyy-MM-dd').format(timeSlot.startTime);
+      
+      // Need to query both users and volunteers collections
+      final QuerySnapshot volunteersQuery = await _volunteersCollection.get();
+      
+      List<Volunteer> availableVolunteers = [];
+      
+      for (var doc in volunteersQuery.docs) {
+        String volunteerId = doc.id;
+        DocumentSnapshot userDoc = await _usersCollection.doc(volunteerId).get();
+        
+        if (userDoc.exists) {
+          Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+          Map<String, dynamic> volunteerData = doc.data() as Map<String, dynamic>;
+          Map<String, dynamic> mergedData = {...userData, ...volunteerData};
+          
+          Volunteer volunteer = Volunteer.fromMap(mergedData, volunteerId);
+          
+          // Check if volunteer serves the senior's location
+          bool servesLocation = volunteer.servingAreas.any((area) => 
+            area.toLowerCase().contains(seniorLocation.toLowerCase()) ||
+            seniorLocation.toLowerCase().contains(area.toLowerCase())
+          );
+          
+          if (servesLocation) {
+            // Check if volunteer has availability for the requested date
+            if (volunteer.availability.containsKey(formattedDate)) {
+              // Check for overlapping time slots
+              bool isAvailable = volunteer.availability[formattedDate]!.any((slot) {
+                // Check if the slot's time range overlaps with requested time
+                bool timeOverlaps = 
+                  slot.startTime.isBefore(timeSlot.endTime) && 
+                  slot.endTime.isAfter(timeSlot.startTime);
+                
+                // Check if the slot is not already booked
+                bool notBooked = !slot.isBooked;
+                
+                return timeOverlaps && notBooked;
+              });
+                  
+              if (isAvailable) {
+                availableVolunteers.add(volunteer);
+              }
+            }
+          }
+        }
+      }
+      
+      return availableVolunteers;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error finding available volunteers: $e');
+      }
+      return [];
     }
   }
 }

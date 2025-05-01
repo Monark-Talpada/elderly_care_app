@@ -9,6 +9,7 @@ import 'package:elderly_care_app/utils/navigation_utils.dart';
 import 'package:elderly_care_app/screens/senior/emergency_button.dart';
 import 'package:elderly_care_app/screens/senior/senior_appointments_screen.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class SeniorHomeScreen extends StatefulWidget {
   const SeniorHomeScreen({Key? key}) : super(key: key);
@@ -133,35 +134,77 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     if (_isLoading) {
       return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_senior == null) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
-          child: Text('Unable to load profile. Please try again later.'),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 48,
+                color: Colors.red[300],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Unable to load profile. Please try again later.',
+                style: TextStyle(
+                  color: Colors.red[700],
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _loadSeniorData,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Senior Dashboard'),
+        title: const Text(
+          'Senior Dashboard',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+          ),
+        ),
+        elevation: 0,
+        backgroundColor: theme.primaryColor,
         actions: [
           IconButton(
             icon: const Icon(Icons.person),
             onPressed: () {
               Navigator.pushNamed(context, '/senior/profile');
-            },  
+            },
+            tooltip: 'Profile',
           ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _signOut,
+            tooltip: 'Sign Out',
           ),
         ],
       ),
@@ -173,159 +216,292 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildWelcomeCard(),
-              const SizedBox(height: 24),
-              _buildEmergencyButton(),
-              const SizedBox(height: 24),
-              _buildDailyNeedsSection(),
-              const SizedBox(height: 24),
-              _buildQuickActionsSection(),
+              // Welcome section
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      theme.primaryColor,
+                      theme.primaryColor.withOpacity(0.8),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Welcome, ${_senior!.name}',
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'You have ${_connectedFamilyMembers.length} connected family member${_connectedFamilyMembers.length != 1 ? 's' : ''}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/senior/family_connections')
+                              .then((_) => _loadSeniorData());
+                        },
+                        icon: const Icon(Icons.family_restroom),
+                        label: const Text('Manage Family Connections'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: theme.primaryColor,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 32),
+              
+              // Emergency button section
+              Container(
+                width: double.infinity,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: _senior!.emergencyModeActive ? Colors.red.shade700 : Colors.red,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _navigateToEmergencyButton,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _senior!.emergencyModeActive
+                                ? Icons.cancel_outlined
+                                : Icons.emergency,
+                            color: Colors.white,
+                            size: 32,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            _senior!.emergencyModeActive ? 'CANCEL EMERGENCY' : 'EMERGENCY',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 24,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 32),
+              
+              // Daily needs section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.notifications_active,
+                        color: theme.primaryColor,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Upcoming Needs',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/senior/daily_needs').then((_) {
+                        _loadSeniorData();
+                      });
+                    },
+                    icon: const Icon(Icons.arrow_forward),
+                    label: const Text('View All'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: theme.primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _upcomingNeeds.isEmpty
+                  ? Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.grey[300]!,
+                          width: 1,
+                        ),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'No upcoming needs at the moment',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _upcomingNeeds.length > 3 ? 3 : _upcomingNeeds.length,
+                      itemBuilder: (context, index) {
+                        final need = _upcomingNeeds[index];
+                        return _buildNeedCard(need);
+                      },
+                    ),
+              
+              const SizedBox(height: 32),
+              
+              // Quick actions section
+              Row(
+                children: [
+                  Icon(
+                    Icons.dashboard,
+                    color: theme.primaryColor,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Quick Actions',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                children: [
+                  _buildActionCard(
+                    'Add Need',
+                    Icons.add_task,
+                    Colors.green,
+                    () => Navigator.pushNamed(context, '/senior/add_need'),
+                  ),
+                  _buildActionCard(
+                    'Book Volunteer',
+                    Icons.people,
+                    Colors.blue,
+                    () => Navigator.pushNamed(context, '/senior/select_volunteer'),
+                  ),
+                  _buildActionCard(
+                    'My Appointments',
+                    Icons.calendar_month,
+                    Colors.amber,
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SeniorAppointmentsScreen(
+                          seniorId: _senior!.id,
+                        ),
+                      ),
+                    ).then((_) => _loadSeniorData()),
+                  ),
+                  _buildActionCard(
+                    'Emergency Contacts',
+                    Icons.emergency,
+                    Colors.red,
+                    () => Navigator.pushNamed(context, '/senior/emergency_contacts'),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 32),
+              
+              // Connected family section
+              if (_connectedFamilyMembers.isNotEmpty) ...[
+                Row(
+                  children: [
+                    Icon(
+                      Icons.family_restroom,
+                      color: theme.primaryColor,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Connected Family',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 140,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _connectedFamilyMembers.length > 5
+                        ? 5
+                        : _connectedFamilyMembers.length,
+                    itemBuilder: (context, index) {
+                      final member = _connectedFamilyMembers[index];
+                      return _buildFamilyMemberCard(member);
+                    },
+                  ),
+                ),
+              ],
             ],
           ),
         ),
       ),
-    );
-  }
-
- Widget _buildWelcomeCard() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundImage:
-                  _senior!.photoUrl != null ? NetworkImage(_senior!.photoUrl!) : null,
-              child: _senior!.photoUrl == null
-                  ? Text(
-                      _senior!.name.substring(0, 1).toUpperCase(),
-                      style: const TextStyle(fontSize: 32),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Hello, ${_senior!.name}',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'How are you feeling today?',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Connected Family Members: ${_senior!.connectedFamilyIds.length}',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: _editSeniorName,
-            )
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmergencyButton() {
-    return InkWell(
-      onTap: _navigateToEmergencyButton,
-      child: Container(
-        width: double.infinity,
-        height: 80,
-        decoration: BoxDecoration(
-          color: _senior!.emergencyModeActive ? Colors.red.shade700 : Colors.red,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Center(
-          child: Text(
-            _senior!.emergencyModeActive ? 'CANCEL EMERGENCY' : 'EMERGENCY',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 24,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDailyNeedsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Upcoming Needs',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/senior/daily_needs').then((_) {
-                  _loadSeniorData();
-                });
-              },
-              child: const Text('View All'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        _upcomingNeeds.isEmpty
-            ? Card(
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Center(
-                    child: Column(
-                      children: [
-                        Icon(Icons.calendar_today, size: 48, color: Colors.grey),
-                        const SizedBox(height: 8),
-                        Text(
-                          'No upcoming needs',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 16),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Tap "View All" to add new needs',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 14, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              )
-            : ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _upcomingNeeds.length > 3 ? 3 : _upcomingNeeds.length,
-                itemBuilder: (context, index) {
-                  final need = _upcomingNeeds[index];
-                  return _buildNeedCard(need);
-                },
-              ),
-      ],
     );
   }
 
@@ -353,20 +529,12 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
     }
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.2),
-          child: Icon(icon, color: color),
-        ),
-        title: Text(need.title),
-        subtitle: Text(
-          '${need.description.length > 30 ? '${need.description.substring(0, 30)}...' : need.description}\n'
-          'Due: ${DateFormat('MMM d, h:mm a').format(need.dueDate)}',
-        ),
-        trailing: _getStatusChip(need.status),
-        isThreeLine: true,
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: InkWell(
         onTap: () {
           Navigator.pushNamed(
             context,
@@ -374,6 +542,73 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
             arguments: need,
           );
         },
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Icon(
+                    icon,
+                    color: color,
+                    size: 28,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      need.title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      need.description.length > 30
+                          ? '${need.description.substring(0, 30)}...'
+                          : need.description,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.access_time,
+                          size: 16,
+                          color: Colors.grey[600],
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          DateFormat('MMM d, h:mm a').format(need.dueDate),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              _getStatusChip(need.status),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -381,236 +616,52 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
   Widget _getStatusChip(NeedStatus status) {
     Color color;
     String label;
+    IconData icon;
 
     switch (status) {
       case NeedStatus.pending:
         color = Colors.orange;
         label = 'Pending';
+        icon = Icons.hourglass_empty;
         break;
       case NeedStatus.inProgress:
         color = Colors.blue;
         label = 'In Progress';
+        icon = Icons.refresh;
         break;
       case NeedStatus.completed:
         color = Colors.green;
         label = 'Completed';
+        icon = Icons.check_circle;
         break;
       case NeedStatus.cancelled:
         color = Colors.red;
         label = 'Cancelled';
+        icon = Icons.cancel;
         break;
     }
 
-    return Chip(
-      label: Text(
-        label,
-        style: TextStyle(color: Colors.white, fontSize: 12),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.5)),
       ),
-      backgroundColor: color,
-      padding: const EdgeInsets.all(0),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    );
-  }
-
-  Widget _buildQuickActionsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Quick Actions',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 16),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          children: [
-            _buildActionCard(
-              'Add Need',
-              Icons.add_task,
-              Colors.green,
-              () => Navigator.pushNamed(context, '/senior/add_need'),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
             ),
-            _buildActionCard(
-              'Book Volunteer',
-              Icons.people,
-              Colors.blue,
-              () => Navigator.pushNamed(context, '/senior/select_volunteer'),
-            ),
-            _buildActionCard(
-  'My Appointments',
-  Icons.calendar_month,
-  Colors.amber,
-  () => Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => SeniorAppointmentsScreen(
-        seniorId: _senior!.id,
-      ),
-    ),
-  ).then((_) => _loadSeniorData()),
-),
-            _buildFamilyMembersCard(),
-            _buildActionCard(
-              'Emergency Contacts',
-              Icons.emergency,
-              Colors.red,
-              () => Navigator.pushNamed(context, '/senior/emergency_contacts'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        if (_connectedFamilyMembers.isNotEmpty) _buildFamilyMembersSection(),
-      ],
-    );
-  }
-
-  Widget _buildFamilyMembersCard() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: () => Navigator.pushNamed(context, '/senior/family_connections'),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  Icon(
-                    Icons.family_restroom,
-                    size: 48,
-                    color: Colors.purple,
-                  ),
-                  if (_connectedFamilyMembers.isNotEmpty)
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          _connectedFamilyMembers.length.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Family Members',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                '${_connectedFamilyMembers.length} connected',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFamilyMembersSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Connected Family',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/senior/family_connections')
-                    .then((_) {
-                  _loadSeniorData();
-                });
-              },
-              child: const Text('View All'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 110,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount:
-                _connectedFamilyMembers.length > 5 ? 5 : _connectedFamilyMembers.length,
-            itemBuilder: (context, index) {
-              final member = _connectedFamilyMembers[index];
-              return _buildFamilyMemberCard(member);
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFamilyMemberCard(FamilyMember member) {
-    return Card(
-      margin: const EdgeInsets.only(right: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: () {},
-        child: Container(
-          width: 100,
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundImage:
-                    member.photoUrl != null ? NetworkImage(member.photoUrl!) : null,
-                child: member.photoUrl == null
-                    ? Text(member.name.substring(0, 1).toUpperCase(),
-                        style: const TextStyle(fontSize: 18))
-                    : null,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                member.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-              ),
-              if (member.relationship != null)
-                Text(
-                  member.relationship!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 10, color: Colors.grey[600]),
-                ),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }
@@ -618,28 +669,104 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
   Widget _buildActionCard(String title, IconData icon, Color color, VoidCallback onTap) {
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                size: 48,
-                color: color,
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Icon(
+                    icon,
+                    color: color,
+                    size: 32,
+                  ),
+                ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               Text(
                 title,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
+                  fontSize: 14,
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFamilyMemberCard(FamilyMember member) {
+    return Card(
+      margin: const EdgeInsets.only(right: 16),
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: InkWell(
+        onTap: () {},
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: 120,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    member.name.isNotEmpty ? member.name[0].toUpperCase() : '?',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                member.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              if (member.relationship != null)
+                Text(
+                  member.relationship!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
             ],
           ),
         ),
