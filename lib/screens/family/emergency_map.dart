@@ -145,41 +145,48 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
             location.latitude,
             location.longitude,
           ),
-          child: Column(
-            children: [
-              const Icon(
-                Icons.location_on,
-                color: Colors.red,
-                size: 40.0,
-              ),
-              Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(4),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 2,
-                    )
-                  ]
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
                 ),
-                child: Text(
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.red[700],
+                  size: 24.0,
+                ),
+                const SizedBox(height: 4),
+                Text(
                   senior.name,
-                  style: const TextStyle(fontSize: 12),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       }).toList();
     }
-    
-    // We'll add current user location marker in the build method
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     // Create a complete markers list including user's current location
     List<Marker> allMarkers = List.from(_markers);
     
@@ -190,22 +197,38 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
           width: 60.0,
           height: 60.0,
           point: _currentUserLocation!,
-          child: const Column(
-            children: [
-              Icon(
-                Icons.my_location,
-                color: Colors.blue,
-                size: 30.0,
-              ),
-              Text(
-                'You',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
                 ),
-              ),
-            ],
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.my_location,
+                  color: theme.primaryColor,
+                  size: 24.0,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'You',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: theme.primaryColor,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -213,8 +236,15 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Emergency Map'),
+        title: const Text(
+          'Emergency Map',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+          ),
+        ),
         backgroundColor: Colors.red,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -229,11 +259,46 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       body: Stack(
         children: [
           if (_initialPosition == null && _currentUserLocation == null)
-            const Center(
-              child: Text(
-                'No location data available for seniors in emergency mode',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.red,
+                    Colors.red.withOpacity(0.8),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      size: 64,
+                      color: Colors.white.withOpacity(0.8),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'No location data available',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'No seniors in emergency mode have shared their location',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             )
           else
@@ -249,90 +314,85 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
                   subdomains: const ['a', 'b', 'c'],
                   userAgentPackageName: 'com.elderly_care_app',
                 ),
-                MarkerLayer(markers: allMarkers),
-                Align(
-                  alignment: Alignment.bottomRight,
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 5, bottom: 5),
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.7),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                    child: const Text(
-                      '© OpenStreetMap contributors',
-                      style: TextStyle(color: Colors.black54, fontSize: 10),
-                    ),
-                  ),
+                MarkerLayer(
+                  markers: allMarkers,
                 ),
               ],
             ),
           if (_isLoadingLocation)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                color: Colors.blue.withOpacity(0.7),
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: const Center(
-                  child: Text(
-                    'Getting your location...',
-                    style: TextStyle(color: Colors.white),
-                  ),
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               ),
             ),
           if (_locationPermissionDenied)
             Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
+              bottom: 16,
+              left: 16,
+              right: 16,
               child: Container(
-                color: Colors.red.withOpacity(0.7),
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: const Center(
-                  child: Text(
-                    'Location permission denied. Some features may be limited.',
-                    style: TextStyle(color: Colors.white),
-                  ),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.location_off,
+                      size: 32,
+                      color: Colors.red[300],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Location Access Required',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Please enable location services to view emergency locations',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        await Geolocator.openAppSettings();
+                      },
+                      icon: const Icon(Icons.settings),
+                      label: const Text('Open Settings'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
         ],
       ),
-      floatingActionButton: (_initialPosition != null || _currentUserLocation != null)
-          ? Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                FloatingActionButton(
-                  heroTag: 'centerOnUser',
-                  backgroundColor: Colors.blue,
-                  child: const Icon(Icons.my_location),
-                  onPressed: () {
-                    if (_currentUserLocation != null && _mapController != null) {
-                      _mapController!.move(_currentUserLocation!, 15.0);
-                    } else {
-                      _getCurrentLocation();
-                    }
-                  },
-                  mini: true,
-                ),
-                const SizedBox(height: 10),
-                if (_initialPosition != null)
-                  FloatingActionButton(
-                    heroTag: 'centerOnSenior',
-                    backgroundColor: Colors.red,
-                    child: const Icon(Icons.person_pin_circle),
-                    onPressed: () {
-                      if (_initialPosition != null && _mapController != null) {
-                        _mapController!.move(_initialPosition!, 13.0);
-                      }
-                    },
-                  ),
-              ],
-            )
-          : null,
     );
   }
 }

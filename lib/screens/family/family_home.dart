@@ -84,15 +84,26 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
  
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Family Dashboard'),
+        title: const Text(
+          'Family Dashboard',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+          ),
+        ),
+        elevation: 0,
+        backgroundColor: theme.primaryColor,
         actions: [
           IconButton(
-            icon: const Icon(Icons.person),   
+            icon: const Icon(Icons.person),
             onPressed: () {
-                Navigator.pushNamed(context, '/family/profile');
+              Navigator.pushNamed(context, '/family/profile');
             },
+            tooltip: 'Profile',
           ),
           IconButton(
             icon: const Icon(Icons.logout),
@@ -108,15 +119,33 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 48,
+                        color: Colors.red[300],
+                      ),
+                      const SizedBox(height: 16),
                       Text(
                         _errorMessage!,
-                        style: const TextStyle(color: Colors.red),
+                        style: TextStyle(
+                          color: Colors.red[700],
+                          fontSize: 16,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
-                      ElevatedButton(
+                      ElevatedButton.icon(
                         onPressed: _loadData,
-                        child: const Text('Retry'),
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Retry'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -130,32 +159,47 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Welcome section
-                        Card(
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                theme.primaryColor,
+                                theme.primaryColor.withOpacity(0.8),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.all(16.0),
+                            padding: const EdgeInsets.all(20.0),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   'Welcome, ${widget.family.name}',
                                   style: const TextStyle(
-                                    fontSize: 24,
+                                    fontSize: 26,
                                     fontWeight: FontWeight.bold,
+                                    color: Colors.white,
                                   ),
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 12),
                                 Text(
                                   'You are connected to ${_connectedSeniors.length} senior citizen${_connectedSeniors.length != 1 ? 's' : ''}',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 16,
-                                    color: Colors.grey[600],
+                                    color: Colors.white70,
                                   ),
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 20),
                                 ElevatedButton.icon(
                                   onPressed: () {
                                     Navigator.push(
@@ -170,8 +214,15 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
                                   icon: const Icon(Icons.person_add),
                                   label: const Text('Connect with a Senior'),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.blue,
-                                    foregroundColor: Colors.white,
+                                    backgroundColor: Colors.white,
+                                    foregroundColor: theme.primaryColor,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -179,28 +230,44 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
                           ),
                         ),
                         
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 32),
                         
                         // Connected seniors section
-                        const Text(
-                          'Connected Seniors',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.group,
+                              color: theme.primaryColor,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Connected Seniors',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
                         _connectedSeniors.isEmpty
-                            ? const Card(
-                                child: Padding(
-                                  padding: EdgeInsets.all(16.0),
-                                  child: Center(
-                                    child: Text(
-                                      'You are not connected to any seniors yet',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.grey,
-                                      ),
+                            ? Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.grey[300]!,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: const Center(
+                                  child: Text(
+                                    'You are not connected to any seniors yet',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.grey,
                                     ),
                                   ),
                                 ),
@@ -215,28 +282,44 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
                                 },
                               ),
                         
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 32),
                         
                         // Pending needs section
-                        const Text(
-                          'Pending Needs',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.notifications_active,
+                              color: theme.primaryColor,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Pending Needs',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16),
                         _pendingNeeds.isEmpty
-                            ? const Card(
-                                child: Padding(
-                                  padding: EdgeInsets.all(16.0),
-                                  child: Center(
-                                    child: Text(
-                                      'No pending needs at the moment',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.grey,
-                                      ),
+                            ? Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.grey[300]!,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: const Center(
+                                  child: Text(
+                                    'No pending needs at the moment',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.grey,
                                     ),
                                   ),
                                 ),
@@ -272,7 +355,6 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
                                           assignedToId: widget.family.id,
                                         );
                                         
-                                        // Use updateNeed method from database_service.dart
                                         final success = await dbService.updateNeed(updatedNeed);
                                         
                                         if (success) {
@@ -284,6 +366,7 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           SnackBar(
                                             content: Text('Error updating need: ${e.toString()}'),
+                                            backgroundColor: Colors.red,
                                           ),
                                         );
                                       }
@@ -297,9 +380,8 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
                 ),
       floatingActionButton: _connectedSeniors.isEmpty
           ? null
-          : FloatingActionButton(
+          : FloatingActionButton.extended(
               onPressed: () {
-                // Check if any senior is in emergency mode
                 final emergencySeniors = _connectedSeniors
                     .where((senior) => senior.emergencyModeActive)
                     .toList();
@@ -317,12 +399,14 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('No seniors in emergency mode'),
+                      backgroundColor: Colors.orange,
                     ),
                   );
                 }
               },
               backgroundColor: Colors.red,
-              child: const Icon(Icons.emergency),
+              icon: const Icon(Icons.emergency),
+              label: const Text('Emergency Map'),
               tooltip: 'Emergency Map',
             ),
     );
@@ -330,12 +414,13 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
 
   Widget _buildSeniorCard(SeniorCitizen senior) {
     final bool isEmergency = senior.emergencyModeActive;
+    final theme = Theme.of(context);
     
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 4,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         side: isEmergency
             ? const BorderSide(color: Colors.red, width: 2)
             : BorderSide.none,
@@ -352,20 +437,26 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
             ),
           ).then((_) => _loadData());
         },
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 30,
-                backgroundColor: Colors.blue.shade100,
-                child: Text(
-                  senior.name.isNotEmpty ? senior.name[0].toUpperCase() : '?',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue,
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: theme.primaryColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    senior.name.isNotEmpty ? senior.name[0].toUpperCase() : '?',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: theme.primaryColor,
+                    ),
                   ),
                 ),
               ),
@@ -388,12 +479,12 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
                         if (isEmergency)
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
+                              horizontal: 10,
+                              vertical: 6,
                             ),
                             decoration: BoxDecoration(
                               color: Colors.red,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
@@ -403,7 +494,7 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
                                   color: Colors.white,
                                   size: 16,
                                 ),
-                                SizedBox(width: 4),
+                                SizedBox(width: 6),
                                 Text(
                                   'EMERGENCY',
                                   style: TextStyle(
@@ -417,29 +508,51 @@ class _FamilyHomeScreenState extends State<FamilyHomeScreen> {
                           ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      senior.email,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.email,
+                          size: 16,
+                          color: Colors.grey[600],
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            senior.email,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      senior.phoneNumber ?? 'No phone number',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.phone,
+                          size: 16,
+                          color: Colors.grey[600],
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          senior.phoneNumber ?? 'No phone number',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 Icons.arrow_forward_ios,
                 size: 16,
-                color: Colors.grey,
+                color: Colors.grey[400],
               ),
             ],
           ),
