@@ -135,8 +135,12 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         return Scaffold(
+          backgroundColor: const Color(0xFFF8F9FA),
           appBar: AppBar(
-            title: const Text('Manage Availability'),
+            title: const Text('Availability'),
+            elevation: 0,
+            backgroundColor: const Color(0xFF4A90E2),
+            foregroundColor: Colors.white,
           ),
           body: _isLoading
               ? const Center(child: CircularProgressIndicator())
@@ -145,7 +149,16 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
                   child: CustomScrollView(
                     slivers: [
                       SliverToBoxAdapter(
-                        child: _buildCalendarSection(constraints),
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF4A90E2),
+                            borderRadius: BorderRadius.only(
+                              bottomLeft: Radius.circular(20),
+                              bottomRight: Radius.circular(20),
+                            ),
+                          ),
+                          child: _buildCalendarSection(constraints),
+                        ),
                       ),
                       SliverToBoxAdapter(
                         child: _buildTimeSlotHeader(),
@@ -170,16 +183,27 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
           titleCentered: true,
           formatButtonVisible: false,
           headerPadding: const EdgeInsets.symmetric(vertical: 8),
+          titleTextStyle: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+          leftChevronIcon: const Icon(Icons.chevron_left, color: Colors.white),
+          rightChevronIcon: const Icon(Icons.chevron_right, color: Colors.white),
         ),
         calendarStyle: CalendarStyle(
+          defaultTextStyle: const TextStyle(color: Colors.white),
+          weekendTextStyle: const TextStyle(color: Colors.white70),
+          outsideTextStyle: const TextStyle(color: Colors.white30),
           todayDecoration: BoxDecoration(
-            color: Colors.blue.shade200,
+            color: Colors.white.withOpacity(0.3),
             shape: BoxShape.circle,
           ),
           selectedDecoration: BoxDecoration(
-            color: Colors.blue.shade600,
+            color: Colors.white,
             shape: BoxShape.circle,
           ),
+          selectedTextStyle: const TextStyle(color: Color(0xFF4A90E2)),
         ),
         firstDay: DateTime.now(),
         lastDay: DateTime.now().add(const Duration(days: 90)),
@@ -204,25 +228,43 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
   }
 
   Widget _buildTimeSlotHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
-            child: Text(
-              'Available Time Slots for ${DateFormat('MMM dd, yyyy').format(_selectedDay)}',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-              overflow: TextOverflow.ellipsis,
+          Text(
+            DateFormat('MMM dd, yyyy').format(_selectedDay),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF2C3E50),
             ),
           ),
-          const SizedBox(width: 8),
-          ElevatedButton(
+          ElevatedButton.icon(
             onPressed: _addTimeSlot,
-            child: const Text('Add Slot'),
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Add'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4A90E2),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
           ),
         ],
       ),
@@ -236,10 +278,23 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     if (daySlots.isEmpty) {
       return SliverFillRemaining(
         child: Center(
-          child: Text(
-            'No availability added for this day. Tap "Add Slot" to add time slots.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyLarge,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.access_time,
+                size: 48,
+                color: const Color(0xFF4A90E2).withOpacity(0.3),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'No time slots added',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF7F8C8D),
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -249,27 +304,48 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
       delegate: SliverChildBuilderDelegate(
         (context, index) {
           final TimeSlot slot = daySlots[index];
-          return Card(
+          return Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
             child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               title: Text(
                 '${DateFormat.jm().format(slot.startTime)} - ${DateFormat.jm().format(slot.endTime)}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                slot.isBooked ? 'Booked' : 'Available',
-                style: TextStyle(
-                  color: slot.isBooked ? Colors.red : Colors.green,
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Color(0xFF2C3E50),
                 ),
               ),
               trailing: slot.isBooked
-                  ? const Chip(
-                      label: Text('Reserved'),
-                      backgroundColor: Colors.amber,
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE74C3C).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'Reserved',
+                        style: TextStyle(
+                          color: Color(0xFFE74C3C),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     )
                   : IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
+                      icon: const Icon(Icons.close, size: 18),
                       onPressed: () => _removeTimeSlot(dayKey, index),
+                      color: const Color(0xFF95A5A6),
                     ),
             ),
           );

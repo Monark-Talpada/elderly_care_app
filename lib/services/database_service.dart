@@ -414,11 +414,15 @@ Future<bool> updateFamily(FamilyMember member) async {
 
 Future<void> updateVolunteer(Volunteer volunteer) async {
   try {
+    print('Updating volunteer in Firebase with ID: ${volunteer.id}');
+    print('Skills to be updated: ${volunteer.skills}');
+    
     // Update the basic user info
     await _firestore.collection('users').doc(volunteer.id).update({
       'name': volunteer.name,
       'phoneNumber': volunteer.phoneNumber,
     });
+    print('Updated user collection');
     
     // Update volunteer-specific info
     await _firestore.collection('volunteers').doc(volunteer.id).update({
@@ -427,7 +431,9 @@ Future<void> updateVolunteer(Volunteer volunteer) async {
       'servingAreas': volunteer.servingAreas,
       'experienceYears': volunteer.experienceYears,
     });
+    print('Updated volunteers collection with skills: ${volunteer.skills}');
   } catch (e) {
+    print('Error updating volunteer in Firebase: $e');
     rethrow; // Rethrow to handle in the UI
   }
 }
