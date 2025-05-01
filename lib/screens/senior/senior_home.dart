@@ -7,6 +7,7 @@ import 'package:elderly_care_app/services/auth_service.dart';
 import 'package:elderly_care_app/services/database_service.dart';
 import 'package:elderly_care_app/utils/navigation_utils.dart';
 import 'package:elderly_care_app/screens/senior/emergency_button.dart';
+import 'package:elderly_care_app/screens/senior/senior_appointments_screen.dart';
 import 'package:intl/intl.dart';
 
 class SeniorHomeScreen extends StatefulWidget {
@@ -439,6 +440,19 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
               Colors.blue,
               () => Navigator.pushNamed(context, '/senior/select_volunteer'),
             ),
+            _buildActionCard(
+  'My Appointments',
+  Icons.calendar_month,
+  Colors.amber,
+  () => Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => SeniorAppointmentsScreen(
+        seniorId: _senior!.id,
+      ),
+    ),
+  ).then((_) => _loadSeniorData()),
+),
             _buildFamilyMembersCard(),
             _buildActionCard(
               'Emergency Contacts',
