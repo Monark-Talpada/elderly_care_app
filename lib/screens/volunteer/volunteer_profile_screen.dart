@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:elderly_care_app/models/volunteer_model.dart';
+import 'package:elderly_care_app/models/review_model.dart';
 import 'package:elderly_care_app/services/database_service.dart';
 import 'package:elderly_care_app/services/auth_service.dart';
 
@@ -21,8 +22,10 @@ class VolunteerProfileScreen extends StatefulWidget {
 class _VolunteerProfileScreenState extends State<VolunteerProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final DatabaseService _databaseService = DatabaseService();
-  bool _isLoading = false;
+  bool _isLoading = true;
   bool _isVerifying = false;
+  List<Review> _reviews = [];
+  double _averageRating = 0.0;
 
   // Form controllers
   late TextEditingController _nameController;
@@ -33,22 +36,6 @@ class _VolunteerProfileScreenState extends State<VolunteerProfileScreen> {
   List<String> _selectedAreas = [];
   final TextEditingController _skillController = TextEditingController();
   late TextEditingController _areaController;
-
-  // Mock reviews data - In a real app, you'd fetch this from your database
-  final List<Map<String, dynamic>> _reviews = [];
-
-  // Available skills options
-  final List<String> _availableSkills = [
-    'Companionship',
-    'Meal Preparation',
-    'Transportation',
-    'Shopping',
-    'Medication Reminders',
-    'Light Housekeeping',
-    'Technology Help',
-    'Cognitive Activities',
-    'Physical Activities',
-  ];
 
   @override
   void initState() {
@@ -72,34 +59,26 @@ class _VolunteerProfileScreenState extends State<VolunteerProfileScreen> {
     _selectedAreas = List.from(widget.volunteer.servingAreas);
     print('Loaded serving areas: $_selectedAreas');
 
-    // Load reviews
     _loadReviews();
   }
 
   Future<void> _loadReviews() async {
-    // This would typically fetch reviews from your database service
-    // For now, let's create some sample reviews if the volunteer has reviews
-    setState(() {
-      if (widget.volunteer.ratingCount != null &&
-          widget.volunteer.ratingCount! > 0) {
-        // Some sample reviews
-        _reviews.addAll([
-          {
-            'reviewerName': 'John D.',
-            'rating': 5.0,
-            'date': DateTime.now().subtract(const Duration(days: 15)),
-            'comment':
-                'Very helpful and caring. Always on time and goes above and beyond.',
-          },
-          {
-            'reviewerName': 'Mary S.',
-            'rating': 4.0,
-            'date': DateTime.now().subtract(const Duration(days: 45)),
-            'comment': 'Good communication and very patient. Would recommend.',
-          },
-        ]);
-      }
-    });
+    try {
+      final reviews = await _databaseService.getVolunteerReviews(widget.volunteer.id);
+      setState(() {
+        _reviews = reviews;
+        _averageRating = reviews.isEmpty ? 0.0 : 
+            reviews.map((r) => r.rating).reduce((a, b) => a + b) / reviews.length;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading reviews: $e')),
+      );
+    }
   }
 
   @override
@@ -707,112 +686,104 @@ class _VolunteerProfileScreenState extends State<VolunteerProfileScreen> {
   }
 
   Widget _buildReviewsSection() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_reviews.isEmpty) {
+      return const Center(
+        child: Text(
+          'No reviews yet',
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.grey,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Reviews',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
           children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.star_outline,
-                  color: Theme.of(context).primaryColor,
-                  size: 24,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Reviews',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (_reviews.isEmpty)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text(
-                    'No reviews yet',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
-              )
-            else
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _reviews.length,
-                separatorBuilder: (context, index) => const Divider(),
-                itemBuilder: (context, index) {
-                  final review = _reviews[index];
-                  return _buildReviewItem(review);
-                },
+            ...List.generate(
+              5,
+              (index) => Icon(
+                Icons.star,
+                size: 24,
+                color: index < _averageRating.round()
+                    ? Colors.amber
+                    : Colors.grey,
               ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '${_averageRating.toStringAsFixed(1)} (${_reviews.length} reviews)',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildReviewItem(Map<String, dynamic> review) {
-    final rating = review['rating'] as double;
-    final formattedDate = DateFormat('MMM d, yyyy').format(review['date'] as DateTime);
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                review['reviewerName'],
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+        const SizedBox(height: 16),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _reviews.length,
+          itemBuilder: (context, index) {
+            final review = _reviews[index];
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        ...List.generate(
+                          5,
+                          (i) => Icon(
+                            Icons.star,
+                            size: 16,
+                            color: i < review.rating
+                                ? Colors.amber
+                                : Colors.grey,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          DateFormat('MMM dd, yyyy').format(review.createdAt),
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      review.feedback,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ],
                 ),
               ),
-              Text(
-                formattedDate,
-                style: TextStyle(color: Colors.grey[600], fontSize: 14),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: List.generate(5, (index) {
-              return Icon(
-                index < rating.floor()
-                    ? Icons.star
-                    : (index < rating ? Icons.star_half : Icons.star_border),
-                color: Colors.amber,
-                size: 20,
-              );
-            }),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            review['comment'],
-            style: const TextStyle(fontSize: 14),
-          ),
-        ],
-      ),
+            );
+          },
+        ),
+      ],
     );
   }
 }

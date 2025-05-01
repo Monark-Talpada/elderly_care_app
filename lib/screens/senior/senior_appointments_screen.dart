@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:elderly_care_app/models/appointment_model.dart';
 import 'package:elderly_care_app/models/volunteer_model.dart';
+import 'package:elderly_care_app/models/review_model.dart';
+import 'package:elderly_care_app/widgets/review_dialog.dart';
 import 'package:elderly_care_app/services/database_service.dart';
 
 class SeniorAppointmentsScreen extends StatefulWidget {
@@ -255,63 +257,128 @@ class _SeniorAppointmentsScreenState extends State<SeniorAppointmentsScreen> {
 
   // Build appointment card
   Widget _buildAppointmentCard(Appointment appointment) {
+    final isCompleted = appointment.status == AppointmentStatus.completed;
+    final isCancelled = appointment.status == AppointmentStatus.cancelled;
+    final isUpcoming = appointment.status == AppointmentStatus.scheduled || appointment.status == AppointmentStatus.inProgress;
+    final isInProgress = appointment.status == AppointmentStatus.inProgress;
+
     return Card(
-      elevation: 3,
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Appointment time and status
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Text(
-                    _formatTimeRange(appointment.startTime, appointment.endTime),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                Text(
+                  _volunteerProfiles[appointment.volunteerId]?.name ?? 'Volunteer',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                _buildStatusBadge(appointment.status),
+                _buildStatusChip(appointment.status),
               ],
             ),
+            const SizedBox(height: 12),
+            _buildInfoRow(
+              Icons.calendar_today,
+              'Date',
+              DateFormat('MMM dd, yyyy').format(appointment.startTime),
+            ),
             const SizedBox(height: 8),
-            
-            // Volunteer information
-            _buildVolunteerInfo(appointment.volunteerId),
-            
-            // Notes if available
-            if (appointment.notes != null && appointment.notes!.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text('Notes: ${appointment.notes}'),
-            ],
-            
-            // Action buttons
+            _buildInfoRow(
+              Icons.access_time,
+              'Time',
+              '${DateFormat.jm().format(appointment.startTime)} - ${DateFormat.jm().format(appointment.endTime)}',
+            ),
+            const SizedBox(height: 8),
+            _buildInfoRow(
+              Icons.location_on,
+              'Location',
+              _volunteerProfiles[appointment.volunteerId]?.servingAreas?.first ?? 'Location not specified',
+            ),
             const SizedBox(height: 16),
-            _buildActionButton(appointment),
-            
-            // Show actual times if available
-            if (appointment.actualStartTime != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Started: ${DateFormat('MMM d, h:mm a').format(appointment.actualStartTime!)}',
-                style: const TextStyle(color: Colors.grey),
+            if (isCompleted)
+              FutureBuilder<Review?>(
+                future: DatabaseService().getAppointmentReview(appointment.id),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  
+                  if (snapshot.hasData && snapshot.data != null) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Your Review',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            ...List.generate(
+                              5,
+                              (index) => Icon(
+                                Icons.star,
+                                size: 20,
+                                color: index < snapshot.data!.rating
+                                    ? Colors.amber
+                                    : Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(snapshot.data!.feedback),
+                      ],
+                    );
+                  }
+                  
+                  return ElevatedButton.icon(
+                    onPressed: () async {
+                      final result = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => ReviewDialog(
+                          appointmentId: appointment.id,
+                          volunteerId: appointment.volunteerId,
+                          seniorId: appointment.seniorId,
+                        ),
+                      );
+                      
+                      if (result == true) {
+                        setState(() {});
+                      }
+                    },
+                    icon: const Icon(Icons.star),
+                    label: const Text('Rate & Review'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber,
+                      foregroundColor: Colors.white,
+                    ),
+                  );
+                },
               ),
-            ],
-            if (appointment.actualEndTime != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                'Ended: ${DateFormat('MMM d, h:mm a').format(appointment.actualEndTime!)}',
-                style: const TextStyle(color: Colors.grey),
+            if (isUpcoming)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => _cancelAppointment(appointment),
+                    child: const Text('Cancel'),
+                  ),
+                ],
               ),
-              if (appointment.actualDurationMinutes != null) ...[
-                Text(
-                  'Duration: ${_formatDuration(appointment.actualDurationMinutes!)}',
-                  style: const TextStyle(color: Colors.grey),
-                ),
-              ],
-            ],
           ],
         ),
       ),
@@ -420,6 +487,113 @@ class _SeniorAppointmentsScreenState extends State<SeniorAppointmentsScreen> {
       appointment.status == AppointmentStatus.completed || 
       appointment.status == AppointmentStatus.cancelled
     ).toList();
+  }
+
+  Widget _buildStatusChip(AppointmentStatus status) {
+    Color color;
+    String label;
+    IconData icon;
+    
+    switch (status) {
+      case AppointmentStatus.scheduled:
+        color = Colors.blue;
+        label = 'Scheduled';
+        icon = Icons.schedule;
+        break;
+      case AppointmentStatus.waitingToStart:
+        color = Colors.orange;
+        label = 'Start Requested';
+        icon = Icons.hourglass_empty;
+        break;
+      case AppointmentStatus.inProgress:
+        color = Colors.green;
+        label = 'In Progress';
+        icon = Icons.play_arrow;
+        break;
+      case AppointmentStatus.waitingToEnd:
+        color = Colors.purple;
+        label = 'End Requested';
+        icon = Icons.hourglass_full;
+        break;
+      case AppointmentStatus.completed:
+        color = Colors.teal;
+        label = 'Completed';
+        icon = Icons.check_circle;
+        break;
+      case AppointmentStatus.cancelled:
+        color = Colors.red;
+        label = 'Cancelled';
+        icon = Icons.cancel;
+        break;
+    }
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 16,
+            color: color,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: Colors.grey[600]),
+        const SizedBox(width: 8),
+        Text(
+          '$label: ',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[600],
+          ),
+        ),
+        Text(value),
+      ],
+    );
+  }
+
+  Future<void> _cancelAppointment(Appointment appointment) async {
+    try {
+      final success = await _databaseService.updateAppointmentStatus(
+        appointment.id,
+        AppointmentStatus.cancelled,
+      );
+      
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Appointment cancelled successfully')),
+        );
+        setState(() {});
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to cancel appointment')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 
   @override

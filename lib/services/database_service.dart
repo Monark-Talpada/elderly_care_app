@@ -4,6 +4,7 @@ import 'package:elderly_care_app/models/family_model.dart';
 import 'package:elderly_care_app/models/senior_model.dart';
 import 'package:elderly_care_app/models/volunteer_model.dart';
 import 'package:elderly_care_app/models/appointment_model.dart';
+import 'package:elderly_care_app/models/review_model.dart';
 import 'package:elderly_care_app/services/notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:intl/intl.dart';
@@ -1169,6 +1170,69 @@ Stream<List<Appointment>> getSeniorAppointments(String seniorId) {
         print('Error updating volunteer hours: $e');
       }
       return false;
+    }
+  }
+
+  Future<bool> submitReview(Review review) async {
+    try {
+      await _firestore.collection('reviews').doc(review.id).set(review.toMap());
+      
+      // Update volunteer's average rating
+      final volunteerRef = _firestore.collection('volunteers').doc(review.volunteerId);
+      final volunteerDoc = await volunteerRef.get();
+      
+      if (volunteerDoc.exists) {
+        final currentRating = volunteerDoc.data()?['rating'] as double? ?? 0.0;
+        final totalReviews = volunteerDoc.data()?['totalReviews'] as int? ?? 0;
+        
+        final newTotalReviews = totalReviews + 1;
+        final newRating = ((currentRating * totalReviews) + review.rating) / newTotalReviews;
+        
+        await volunteerRef.update({
+          'rating': newRating,
+          'totalReviews': newTotalReviews,
+        });
+      }
+      
+      return true;
+    } catch (e) {
+      print('Error submitting review: $e');
+      return false;
+    }
+  }
+
+  Future<List<Review>> getVolunteerReviews(String volunteerId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('reviews')
+          .where('volunteerId', isEqualTo: volunteerId)
+          .orderBy('createdAt', descending: true)
+          .get();
+      
+      return snapshot.docs
+          .map((doc) => Review.fromMap(doc.data()))
+          .toList();
+    } catch (e) {
+      print('Error getting volunteer reviews: $e');
+      return [];
+    }
+  }
+
+  Future<Review?> getAppointmentReview(String appointmentId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('reviews')
+          .where('appointmentId', isEqualTo: appointmentId)
+          .get();
+      
+      if (snapshot.docs.isEmpty) {
+        return null;
+      }
+      
+      return Review.fromMap(snapshot.docs.first.data());
+    } catch (e) {
+      print('Error getting appointment review: $e');
+      return null;
     }
   }
 }
