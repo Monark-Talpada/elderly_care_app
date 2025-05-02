@@ -8,6 +8,7 @@ import 'package:elderly_care_app/services/database_service.dart';
 import 'package:elderly_care_app/utils/navigation_utils.dart';
 import 'package:elderly_care_app/screens/senior/emergency_button.dart';
 import 'package:elderly_care_app/screens/senior/senior_appointments_screen.dart';
+import 'package:elderly_care_app/screens/senior/need_details.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -506,10 +507,79 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
   }
 
   Widget _buildNeedCard(DailyNeed need) {
-    final IconData icon;
-    final Color color;
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SeniorNeedDetailsScreen(need: need),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _buildNeedTypeIcon(need.type),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          need.title,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          DateFormat('MMM d, yyyy h:mm a').format(need.dueDate),
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _buildStatusChip(need.status),
+                ],
+              ),
+              if (need.description.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  need.description,
+                  style: TextStyle(
+                    color: Colors.grey[800],
+                    fontSize: 14,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-    switch (need.type) {
+  Widget _buildNeedTypeIcon(NeedType type) {
+    IconData icon;
+    Color color;
+
+    switch (type) {
       case NeedType.medication:
         icon = Icons.medication;
         color = Colors.blue;
@@ -528,92 +598,24 @@ class _SeniorHomeScreenState extends State<SeniorHomeScreen> {
         break;
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        shape: BoxShape.circle,
       ),
-      child: InkWell(
-        onTap: () {
-          Navigator.pushNamed(
-            context,
-            '/senior/need_details',
-            arguments: need,
-          );
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Icon(
-                    icon,
-                    color: color,
-                    size: 28,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      need.title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      need.description.length > 30
-                          ? '${need.description.substring(0, 30)}...'
-                          : need.description,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.access_time,
-                          size: 16,
-                          color: Colors.grey[600],
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          DateFormat('MMM d, h:mm a').format(need.dueDate),
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              _getStatusChip(need.status),
-            ],
-          ),
+      child: Center(
+        child: Icon(
+          icon,
+          color: color,
+          size: 28,
         ),
       ),
     );
   }
 
-  Widget _getStatusChip(NeedStatus status) {
+  Widget _buildStatusChip(NeedStatus status) {
     Color color;
     String label;
     IconData icon;

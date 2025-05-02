@@ -163,7 +163,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
                 ),
               ),
               child: _emergencyContacts.isEmpty
-                  ? _buildEmptyState()
+              ? _buildEmptyState()
                   : RefreshIndicator(
                       onRefresh: _loadEmergencyContacts,
                       child: ListView.builder(
@@ -337,7 +337,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              Icons.contact_emergency,
+            Icons.contact_emergency,
               size: 50,
               color: theme.primaryColor,
             ),
@@ -355,8 +355,8 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Text(
-              'Add family members or trusted contacts who can help in emergencies.',
-              textAlign: TextAlign.center,
+            'Add family members or trusted contacts who can help in emergencies.',
+            textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[600],

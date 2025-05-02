@@ -195,7 +195,8 @@ class _BookVolunteerScreenState extends State<BookVolunteerScreen> with SingleTi
             'Book Volunteer',
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: 20,
+              fontSize: 22,
+              color: Colors.white,
             ),
           ),
           elevation: 0,
@@ -213,107 +214,210 @@ class _BookVolunteerScreenState extends State<BookVolunteerScreen> with SingleTi
             ),
           ),
         ),
-        body: _isLoading
-            ? Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      theme.primaryColor.withOpacity(0.05),
-                      Colors.white,
-                    ],
-                    stops: const [0.0, 0.3],
+        body: SafeArea(
+          child: _isLoading
+              ? Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        theme.primaryColor.withOpacity(0.05),
+                        Colors.white,
+                      ],
+                    ),
                   ),
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 50,
-                        height: 50,
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(theme.primaryColor),
-                          strokeWidth: 3,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Loading volunteer details...',
-                        style: TextStyle(
-                          color: theme.primaryColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Please wait',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            : Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      theme.primaryColor.withOpacity(0.05),
-                      Colors.white,
-                    ],
-                    stops: const [0.0, 0.3],
-                  ),
-                ),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (_volunteer != null) ...[
-                        Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            color: theme.primaryColor.withOpacity(0.1),
+                            shape: BoxShape.circle,
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 20,
-                                  backgroundColor: theme.primaryColor.withOpacity(0.1),
-                                  child: Text(
-                                    _volunteer!.name[0].toUpperCase(),
-                                    style: TextStyle(
-                                      color: theme.primaryColor,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(theme.primaryColor),
+                            strokeWidth: 3,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Loading volunteer details...',
+                          style: TextStyle(
+                            color: theme.primaryColor,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Please wait',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        theme.primaryColor.withOpacity(0.05),
+                        Colors.white,
+                      ],
+                    ),
+                  ),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width - 32,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (_volunteer != null) ...[
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
                                   ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        _volunteer!.name,
-                                        style: const TextStyle(
-                                          fontSize: 16,
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 60,
+                                    height: 60,
+                                    decoration: BoxDecoration(
+                                      color: theme.primaryColor.withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        _volunteer!.name[0].toUpperCase(),
+                                        style: TextStyle(
+                                          color: theme.primaryColor,
                                           fontWeight: FontWeight.bold,
+                                          fontSize: 24,
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _volunteer!.name,
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.phone,
+                                              size: 16,
+                                              color: Colors.grey[600],
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              _volunteer!.phoneNumber ?? 'No phone number',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                          if (widget.need != null) ...[
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.task_alt,
+                                        color: theme.primaryColor,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
                                       Text(
-                                        _volunteer!.phoneNumber ?? 'No phone number',
+                                        'Need Details',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: theme.primaryColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    widget.need!.title,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    widget.need!.description,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.calendar_today,
+                                        size: 16,
+                                        color: theme.primaryColor,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Due: ${DateFormat('MMM d, y').format(widget.need!.dueDate)}',
                                         style: TextStyle(
                                           fontSize: 14,
                                           color: Colors.grey[600],
@@ -321,294 +425,269 @@ class _BookVolunteerScreenState extends State<BookVolunteerScreen> with SingleTi
                                       ),
                                     ],
                                   ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
                                 ),
                               ],
                             ),
-                          ),
-                        ),
-                      ],
-                      if (widget.need != null) ...[
-                        Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  'Need Details',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: theme.primaryColor,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  widget.need!.title,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  widget.need!.description,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
                                 Row(
                                   children: [
                                     Icon(
-                                      Icons.calendar_today,
-                                      size: 16,
+                                      Icons.access_time,
                                       color: theme.primaryColor,
+                                      size: 20,
                                     ),
-                                    const SizedBox(width: 4),
+                                    const SizedBox(width: 8),
                                     Text(
-                                      'Due: ${DateFormat('MMM d, y').format(widget.need!.dueDate)}',
+                                      'Available Time Slots',
                                       style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey[600],
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: theme.primaryColor,
                                       ),
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                      Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Available Time Slots',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.primaryColor,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              if (_availableSlots.isEmpty)
-                                Center(
-                                  child: Text(
-                                    'No available time slots',
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: 14,
+                                const SizedBox(height: 16),
+                                if (_availableSlots.isEmpty)
+                                  Center(
+                                    child: Column(
+                                      children: [
+                                        Icon(
+                                          Icons.schedule,
+                                          size: 48,
+                                          color: Colors.grey[400],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'No available time slots',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                )
-                              else
-                                Column(
-                                  children: [
-                                    SingleChildScrollView(
-                                      scrollDirection: Axis.horizontal,
-                                      child: Row(
-                                        children: _availableSlots.keys.map((day) {
-                                          return Padding(
-                                            padding: const EdgeInsets.only(right: 8),
-                                            child: ChoiceChip(
+                                  )
+                                else
+                                  Column(
+                                    children: [
+                                      SingleChildScrollView(
+                                        scrollDirection: Axis.horizontal,
+                                        child: Row(
+                                          children: _availableSlots.keys.map((day) {
+                                            return Padding(
+                                              padding: const EdgeInsets.only(right: 8),
+                                              child: ChoiceChip(
+                                                label: Text(
+                                                  day,
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: _selectedDay == day
+                                                        ? Colors.white
+                                                        : theme.primaryColor,
+                                                  ),
+                                                ),
+                                                selected: _selectedDay == day,
+                                                selectedColor: theme.primaryColor,
+                                                backgroundColor: theme.primaryColor.withOpacity(0.1),
+                                                onSelected: (selected) {
+                                                  if (selected) {
+                                                    setState(() {
+                                                      _selectedDay = day;
+                                                      _selectedTimeSlot = null;
+                                                    });
+                                                  }
+                                                },
+                                              ),
+                                            );
+                                          }).toList(),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      if (_selectedDay != null)
+                                        Wrap(
+                                          spacing: 8,
+                                          runSpacing: 8,
+                                          children: _availableSlots[_selectedDay]!.map((slot) {
+                                            final isSelected = _selectedTimeSlot == slot;
+                                            return ChoiceChip(
                                               label: Text(
-                                                day,
+                                                '${DateFormat('h:mm a').format(slot.startTime)} - ${DateFormat('h:mm a').format(slot.endTime)}',
                                                 style: TextStyle(
                                                   fontSize: 14,
-                                                  color: _selectedDay == day
-                                                      ? Colors.white
-                                                      : theme.primaryColor,
+                                                  color: isSelected ? Colors.white : theme.primaryColor,
                                                 ),
                                               ),
-                                              selected: _selectedDay == day,
+                                              selected: isSelected,
                                               selectedColor: theme.primaryColor,
                                               backgroundColor: theme.primaryColor.withOpacity(0.1),
                                               onSelected: (selected) {
                                                 if (selected) {
                                                   setState(() {
-                                                    _selectedDay = day;
-                                                    _selectedTimeSlot = null;
+                                                    _selectedTimeSlot = slot;
                                                   });
                                                 }
                                               },
-                                            ),
-                                          );
-                                        }).toList(),
+                                            );
+                                          }).toList(),
+                                        ),
+                                    ],
+                                  ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.note,
+                                      color: theme.primaryColor,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Additional Notes',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: theme.primaryColor,
                                       ),
                                     ),
-                                    const SizedBox(height: 12),
-                                    if (_selectedDay != null)
-                                      Wrap(
-                                        spacing: 8,
-                                        runSpacing: 8,
-                                        children: _availableSlots[_selectedDay]!.map((slot) {
-                                          final isSelected = _selectedTimeSlot == slot;
-                                          return ChoiceChip(
-                                            label: Text(
-                                              '${DateFormat('h:mm a').format(slot.startTime)} - ${DateFormat('h:mm a').format(slot.endTime)}',
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                color: isSelected ? Colors.white : theme.primaryColor,
-                                              ),
-                                            ),
-                                            selected: isSelected,
-                                            selectedColor: theme.primaryColor,
-                                            backgroundColor: theme.primaryColor.withOpacity(0.1),
-                                            onSelected: (selected) {
-                                              if (selected) {
-                                                setState(() {
-                                                  _selectedTimeSlot = slot;
-                                                });
-                                              }
-                                            },
-                                          );
-                                        }).toList(),
-                                      ),
                                   ],
                                 ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Additional Notes',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.primaryColor,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              TextField(
-                                controller: _notesController,
-                                maxLines: 3,
-                                decoration: InputDecoration(
-                                  hintText: 'Enter any additional notes...',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(
-                                      color: theme.primaryColor.withOpacity(0.3),
+                                const SizedBox(height: 12),
+                                TextField(
+                                  controller: _notesController,
+                                  maxLines: 3,
+                                  decoration: InputDecoration(
+                                    hintText: 'Enter any additional notes...',
+                                    filled: true,
+                                    fillColor: theme.primaryColor.withOpacity(0.05),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide.none,
                                     ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(
-                                      color: theme.primaryColor.withOpacity(0.3),
-                                    ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(
-                                      color: theme.primaryColor,
-                                    ),
+                                    contentPadding: const EdgeInsets.all(16),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Location',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.primaryColor,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              TextField(
-                                controller: _locationController,
-                                decoration: InputDecoration(
-                                  hintText: 'Enter your location (e.g., address, city)',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(
-                                      color: theme.primaryColor.withOpacity(0.3),
-                                    ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(
-                                      color: theme.primaryColor.withOpacity(0.3),
-                                    ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                    borderSide: BorderSide(
-                                      color: theme.primaryColor,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: ElevatedButton(
-                          onPressed: _bookAppointment,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: theme.primaryColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              ],
                             ),
                           ),
-                          child: const Text(
-                            'Book Appointment',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.location_on,
+                                      color: theme.primaryColor,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Location',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: theme.primaryColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                TextField(
+                                  controller: _locationController,
+                                  decoration: InputDecoration(
+                                    hintText: 'Enter your location (e.g., address, city)',
+                                    filled: true,
+                                    fillColor: theme.primaryColor.withOpacity(0.05),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    contentPadding: const EdgeInsets.all(16),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
+                          const SizedBox(height: 24),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 56,
+                            child: ElevatedButton(
+                              onPressed: _bookAppointment,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: theme.primaryColor,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                elevation: 4,
+                              ),
+                              child: const Text(
+                                'Book Appointment',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
                       ),
-                      const SizedBox(height: 24),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+        ),
       ),
     );
   }
